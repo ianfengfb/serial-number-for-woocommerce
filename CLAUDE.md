@@ -19,11 +19,21 @@ on products/orders. Distributed as a free (Lite) tier plus a paid Pro tier.
   constant must never ship enabled and is not read from anywhere but
   `Licensing`.
 - **Release packaging (when we get there):** the free/Lite zip is built by
-  excluding `includes/Pro/` from the package; the Pro zip includes everything
-  plus a real license-activation flow (licensing SDK/service TBD — e.g.
-  Freemius or EDD Software Licensing). `Licensing::is_pro_active()` is the
-  only integration point that will need to change to talk to a real license
-  check — nothing else in the codebase should.
+  excluding `includes/Pro/` and `assets/pro/` from the package; the Pro zip
+  includes everything plus a real license-activation flow (licensing
+  SDK/service TBD — e.g. Freemius or EDD Software Licensing).
+  `Licensing::is_pro_active()` is the only integration point that will need
+  to change to talk to a real license check — nothing else in the codebase
+  should. Pro-only front-end assets live under `assets/pro/` (mirroring
+  `includes/Pro/`) precisely so they can be excluded the same way.
+- **A Free class may reference a Pro class, always behind the gate.** e.g.
+  `Admin\Menu` imports `Pro\BulkGenerate\Controller` and only instantiates it
+  after `Licensing::is_pro_active()` passes. This is safe even in the free
+  zip (where `includes/Pro/` doesn't exist) because a PHP `use` import alone
+  never triggers autoloading — only actually instantiating the class does,
+  and that code path is unreachable without a license. The reverse direction
+  (Pro code calling Free classes, e.g. `Repository`, `Generator`) is always
+  fine and expected.
 
 ## Structure
 
@@ -34,17 +44,22 @@ includes/
   Plugin.php                        Singleton; wires up free + Pro features on init()
   Licensing.php                     is_pro_active() gate (see above)
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
-  Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list <-> add-new routing)
+  Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/bulk-generate routing)
+  Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
   Admin/SerialNumbers/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
-    ListTable.php                   WP_List_Table: search + paginated list of serial numbers
+    ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
     FormController.php              Add New / Edit form render + validation + save
-    Ajax.php                        wp_ajax_snw_search_products / snw_search_orders (selectWoo AJAX search)
-  Pro/                              Reserved for Pro-only classes (empty for now)
-assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search
+    Generator.php                   Builds a random serial from the configured (or per-call override) rules
+    Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial
+  Pro/
+    BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
+assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
+                                     exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
                                      own select2/selectWoo asset handles, which aren't guaranteed to be
                                      registered/enqueued on a third-party admin page across WC versions
+assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 init for Bulk Generate
 ```
 
 ## Data model

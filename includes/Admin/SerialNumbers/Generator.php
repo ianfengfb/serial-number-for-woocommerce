@@ -30,12 +30,16 @@ final class Generator {
 	/**
 	 * Generate a unique serial number using the configured rules.
 	 *
+	 * $prefix_override / $suffix_override let a caller (e.g. Pro bulk generate)
+	 * supply a per-row prefix/suffix; when left null or empty, the global rule
+	 * from WooCommerce > Settings > Serial Numbers is used instead.
+	 *
 	 * Falls back to the last candidate if every attempt collides (astronomically
 	 * unlikely); the Add New form's save-time uniqueness check is the backstop.
 	 */
-	public static function generate(): string {
-		$prefix  = (string) get_option( 'snw_auto_prefix', '' );
-		$postfix = (string) get_option( 'snw_auto_postfix', '' );
+	public static function generate( ?string $prefix_override = null, ?string $suffix_override = null ): string {
+		$prefix  = ! empty( $prefix_override ) ? $prefix_override : (string) get_option( 'snw_auto_prefix', '' );
+		$postfix = ! empty( $suffix_override ) ? $suffix_override : (string) get_option( 'snw_auto_postfix', '' );
 		$length  = (int) get_option( 'snw_auto_length', 12 );
 		$length  = max( 1, min( 64, $length ) );
 		$charset = self::charset_for( (string) get_option( 'snw_auto_charset', 'alphanumeric' ) );

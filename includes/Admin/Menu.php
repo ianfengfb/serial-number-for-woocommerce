@@ -4,6 +4,8 @@ namespace SerialNumberForWooCommerce\Admin;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Ajax;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\FormController;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\ListTable;
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\BulkGenerate\Controller as BulkGenerateController;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -71,6 +73,18 @@ final class Menu {
 				'nonce'   => wp_create_nonce( 'snw_admin' ),
 			)
 		);
+
+		$action = isset( $_GET['action'] ) ? sanitize_key( $_GET['action'] ) : '';
+
+		if ( 'bulk-generate' === $action && Licensing::is_pro_active() ) {
+			wp_enqueue_script(
+				'snw-bulk-generate',
+				SNW_PLUGIN_URL . 'assets/pro/js/bulk-generate.js',
+				array( 'jquery', 'snw-admin' ),
+				SNW_VERSION,
+				true
+			);
+		}
 	}
 
 	public function render_page(): void {
@@ -91,6 +105,18 @@ final class Menu {
 			return;
 		}
 
+		if ( 'bulk-generate' === $action ) {
+			if ( ! Licensing::is_pro_active() ) {
+				wp_safe_redirect( add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) ) );
+				exit;
+			}
+
+			$controller = new BulkGenerateController();
+			$controller->handle();
+			$controller->render();
+			return;
+		}
+
 		$this->render_list();
 	}
 
@@ -105,10 +131,21 @@ final class Menu {
 			),
 			admin_url( 'admin.php' )
 		);
+
+		$bulk_generate_url = add_query_arg(
+			array(
+				'page'   => 'serial-number-for-woocommerce',
+				'action' => 'bulk-generate',
+			),
+			admin_url( 'admin.php' )
+		);
 		?>
 		<div class="wrap">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Serial Numbers', 'serial-number-for-woocommerce' ); ?></h1>
 			<a href="<?php echo esc_url( $add_new_url ); ?>" class="page-title-action"><?php esc_html_e( 'Add New', 'serial-number-for-woocommerce' ); ?></a>
+			<?php if ( Licensing::is_pro_active() ) : ?>
+				<a href="<?php echo esc_url( $bulk_generate_url ); ?>" class="page-title-action"><?php esc_html_e( 'Bulk Generate', 'serial-number-for-woocommerce' ); ?></a>
+			<?php endif; ?>
 
 			<?php if ( isset( $_GET['snw_notice'] ) && 'added' === $_GET['snw_notice'] ) : ?>
 				<div class="notice notice-success is-dismissible">
@@ -117,6 +154,18 @@ final class Menu {
 			<?php elseif ( isset( $_GET['snw_notice'] ) && 'updated' === $_GET['snw_notice'] ) : ?>
 				<div class="notice notice-success is-dismissible">
 					<p><?php esc_html_e( 'Serial number updated.', 'serial-number-for-woocommerce' ); ?></p>
+				</div>
+			<?php elseif ( isset( $_GET['snw_notice'] ) && 'bulk_generated' === $_GET['snw_notice'] ) : ?>
+				<div class="notice notice-success is-dismissible">
+					<p>
+						<?php
+						printf(
+							/* translators: %d: number of serial numbers generated */
+							esc_html__( '%d serial numbers generated.', 'serial-number-for-woocommerce' ),
+							isset( $_GET['snw_count'] ) ? absint( $_GET['snw_count'] ) : 0
+						);
+						?>
+					</p>
 				</div>
 			<?php endif; ?>
 

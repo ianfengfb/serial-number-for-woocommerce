@@ -1,8 +1,8 @@
-( function ( $ ) {
+( function ( $, window ) {
 	'use strict';
 
-	$( function () {
-		$( '.snw-search-select' ).each( function () {
+	function initSearchSelects( $els ) {
+		$els.each( function () {
 			var $el = $( this );
 
 			$el.select2( {
@@ -27,6 +27,14 @@
 				width: '25em',
 			} );
 		} );
+	}
+
+	// Exposed so Pro features (e.g. bulk generate's repeatable rows) can
+	// initialize select2 on rows added to the page after the initial load.
+	window.snwInitSearchSelects = initSearchSelects;
+
+	$( function () {
+		initSearchSelects( $( '.snw-search-select' ) );
 
 		$( '#snw-generate-serial' ).on( 'click', function ( e ) {
 			e.preventDefault();
@@ -50,4 +58,4 @@
 				} );
 		} );
 	} );
-} )( jQuery );
+} )( jQuery, window );
