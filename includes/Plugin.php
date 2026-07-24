@@ -22,5 +22,14 @@ final class Plugin {
 
 	public function init(): void {
 		new Admin\Menu();
+
+		add_filter(
+			'woocommerce_get_settings_pages',
+			function ( array $pages ): array {
+				$pages[] = new Admin\Settings();
+
+				return $pages;
+			}
+		);
 	}
 }

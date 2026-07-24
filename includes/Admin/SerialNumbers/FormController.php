@@ -77,7 +77,11 @@ final class FormController {
 	}
 
 	public function render(): void {
-		$back_url = add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) );
+		$back_url       = add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) );
+		$default_status = get_option( 'snw_default_status', 'active' );
+		if ( ! isset( self::STATUSES[ $default_status ] ) ) {
+			$default_status = 'active';
+		}
 		?>
 		<div class="wrap">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Add New Serial Number', 'serial-number-for-woocommerce' ); ?></h1>
@@ -105,6 +109,8 @@ final class FormController {
 								value="<?php echo isset( $_POST['serial_number'] ) ? esc_attr( wp_unslash( $_POST['serial_number'] ) ) : ''; ?>"
 								required
 							/>
+							<button type="button" id="snw-generate-serial" class="button"><?php esc_html_e( 'Generate', 'serial-number-for-woocommerce' ); ?></button>
+							<p class="description"><?php esc_html_e( 'Click Generate to fill this field using the rules in WooCommerce > Settings > Serial Numbers.', 'serial-number-for-woocommerce' ); ?></p>
 						</td>
 					</tr>
 					<tr>
@@ -112,7 +118,7 @@ final class FormController {
 						<td>
 							<select id="snw-status" name="status">
 								<?php foreach ( self::STATUSES as $value => $label ) : ?>
-									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( isset( $_POST['status'] ) ? wp_unslash( $_POST['status'] ) : 'active', $value ); ?>>
+									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( isset( $_POST['status'] ) ? wp_unslash( $_POST['status'] ) : $default_status, $value ); ?>>
 										<?php echo esc_html( $label ); ?>
 									</option>
 								<?php endforeach; ?>

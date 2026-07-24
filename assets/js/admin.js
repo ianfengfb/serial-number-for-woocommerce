@@ -27,5 +27,27 @@
 				width: '25em',
 			} );
 		} );
+
+		$( '#snw-generate-serial' ).on( 'click', function ( e ) {
+			e.preventDefault();
+
+			var $button = $( this );
+			var $input = $( '#snw-serial-number' );
+
+			$button.prop( 'disabled', true );
+
+			$.getJSON( SNWAdmin.ajaxUrl, {
+				action: 'snw_generate_serial',
+				nonce: SNWAdmin.nonce,
+			} )
+				.done( function ( response ) {
+					if ( response && response.success && response.data.serial_number ) {
+						$input.val( response.data.serial_number ).trigger( 'change' );
+					}
+				} )
+				.always( function () {
+					$button.prop( 'disabled', false );
+				} );
+		} );
 	} );
 } )( jQuery );

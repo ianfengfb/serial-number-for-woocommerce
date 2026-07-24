@@ -11,6 +11,13 @@ final class Ajax {
 	public function __construct() {
 		add_action( 'wp_ajax_snw_search_products', array( $this, 'search_products' ) );
 		add_action( 'wp_ajax_snw_search_orders', array( $this, 'search_orders' ) );
+		add_action( 'wp_ajax_snw_generate_serial', array( $this, 'generate_serial' ) );
+	}
+
+	public function generate_serial(): void {
+		$this->check_request();
+
+		wp_send_json_success( array( 'serial_number' => Generator::generate() ) );
 	}
 
 	private function check_request(): void {
