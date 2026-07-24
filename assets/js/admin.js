@@ -5,7 +5,7 @@
 		$( '.snw-search-select' ).each( function () {
 			var $el = $( this );
 
-			$el.selectWoo( {
+			$el.select2( {
 				ajax: {
 					url: SNWAdmin.ajaxUrl,
 					dataType: 'json',
@@ -22,7 +22,9 @@
 					},
 				},
 				minimumInputLength: 1,
-				width: '100%',
+				placeholder: $el.data( 'placeholder' ),
+				allowClear: true,
+				width: '25em',
 			} );
 		} );
 	} );

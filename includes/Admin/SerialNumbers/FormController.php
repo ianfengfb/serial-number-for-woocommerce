@@ -121,11 +121,31 @@ final class FormController {
 					</tr>
 					<tr>
 						<th><label for="snw-product"><?php esc_html_e( 'Product', 'serial-number-for-woocommerce' ); ?></label></th>
-						<td><select id="snw-product" name="product_id" class="snw-search-select" data-type="product" style="width: 25em;"></select></td>
+						<td>
+							<select
+								id="snw-product"
+								name="product_id"
+								class="snw-search-select"
+								data-type="product"
+								data-placeholder="<?php esc_attr_e( 'Search for a product&hellip;', 'serial-number-for-woocommerce' ); ?>"
+							>
+								<option value=""></option>
+							</select>
+						</td>
 					</tr>
 					<tr>
 						<th><label for="snw-order"><?php esc_html_e( 'Order', 'serial-number-for-woocommerce' ); ?></label></th>
-						<td><select id="snw-order" name="order_id" class="snw-search-select" data-type="order" style="width: 25em;"></select></td>
+						<td>
+							<select
+								id="snw-order"
+								name="order_id"
+								class="snw-search-select"
+								data-type="order"
+								data-placeholder="<?php esc_attr_e( 'Search for an order&hellip;', 'serial-number-for-woocommerce' ); ?>"
+							>
+								<option value=""></option>
+							</select>
+						</td>
 					</tr>
 					<tr>
 						<th><label for="snw-expires-at"><?php esc_html_e( 'Expires On', 'serial-number-for-woocommerce' ); ?></label></th>

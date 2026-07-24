@@ -40,13 +40,25 @@ final class Menu {
 			return;
 		}
 
-		wp_enqueue_style( 'select2' );
-		wp_enqueue_script( 'selectWoo' );
+		wp_enqueue_style(
+			'snw-select2',
+			SNW_PLUGIN_URL . 'assets/vendor/select2/select2.min.css',
+			array(),
+			SNW_VERSION
+		);
+
+		wp_enqueue_script(
+			'snw-select2',
+			SNW_PLUGIN_URL . 'assets/vendor/select2/select2.full.min.js',
+			array( 'jquery' ),
+			SNW_VERSION,
+			true
+		);
 
 		wp_enqueue_script(
 			'snw-admin',
 			SNW_PLUGIN_URL . 'assets/js/admin.js',
-			array( 'jquery', 'selectWoo' ),
+			array( 'jquery', 'snw-select2' ),
 			SNW_VERSION,
 			true
 		);

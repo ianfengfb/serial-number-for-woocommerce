@@ -41,7 +41,10 @@ includes/
     FormController.php              Add New form render + validation + save
     Ajax.php                        wp_ajax_snw_search_products / snw_search_orders (selectWoo AJAX search)
   Pro/                              Reserved for Pro-only classes (empty for now)
-assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits selectWoo AJAX search
+assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search
+assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
+                                     own select2/selectWoo asset handles, which aren't guaranteed to be
+                                     registered/enqueued on a third-party admin page across WC versions
 ```
 
 ## Data model
