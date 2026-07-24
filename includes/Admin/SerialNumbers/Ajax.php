@@ -1,0 +1,77 @@
+<?php
+namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * AJAX search endpoints backing the Product/Order select fields on the Add New form.
+ */
+final class Ajax {
+
+	public function __construct() {
+		add_action( 'wp_ajax_snw_search_products', array( $this, 'search_products' ) );
+		add_action( 'wp_ajax_snw_search_orders', array( $this, 'search_orders' ) );
+	}
+
+	private function check_request(): void {
+		check_ajax_referer( 'snw_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( array(), 403 );
+		}
+	}
+
+	public function search_products(): void {
+		$this->check_request();
+
+		$term = isset( $_GET['term'] ) ? sanitize_text_field( wp_unslash( $_GET['term'] ) ) : '';
+
+		$products = wc_get_products(
+			array(
+				's'      => $term,
+				'limit'  => 20,
+				'status' => 'publish',
+			)
+		);
+
+		$results = array();
+		foreach ( $products as $product ) {
+			$results[] = array(
+				'id'   => $product->get_id(),
+				'text' => sprintf( '%s (#%d)', $product->get_name(), $product->get_id() ),
+			);
+		}
+
+		wp_send_json_success( $results );
+	}
+
+	public function search_orders(): void {
+		$this->check_request();
+
+		$term = isset( $_GET['term'] ) ? sanitize_text_field( wp_unslash( $_GET['term'] ) ) : '';
+
+		$order_ids = wc_get_orders(
+			array(
+				'return' => 'ids',
+				'limit'  => 20,
+				's'      => $term,
+			)
+		);
+
+		$results = array();
+		foreach ( $order_ids as $order_id ) {
+			$order = wc_get_order( $order_id );
+
+			if ( ! $order ) {
+				continue;
+			}
+
+			$results[] = array(
+				'id'   => $order_id,
+				'text' => sprintf( '#%s %s', $order->get_order_number(), trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ) ),
+			);
+		}
+
+		wp_send_json_success( $results );
+	}
+}

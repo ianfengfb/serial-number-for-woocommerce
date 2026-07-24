@@ -36,6 +36,8 @@ if ( ! file_exists( SNW_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 
 require_once SNW_PLUGIN_DIR . 'vendor/autoload.php';
 
+register_activation_hook( SNW_PLUGIN_FILE, array( '\SerialNumberForWooCommerce\Install', 'activate' ) );
+
 // Declare compatibility with WooCommerce High-Performance Order Storage.
 add_action(
 	'before_woocommerce_init',

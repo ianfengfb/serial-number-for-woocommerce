@@ -33,9 +33,26 @@ composer.json                       PSR-4 autoload (SerialNumberForWooCommerce\ 
 includes/
   Plugin.php                        Singleton; wires up free + Pro features on init()
   Licensing.php                     is_pro_active() gate (see above)
-  Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page
+  Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
+  Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list <-> add-new routing)
+  Admin/SerialNumbers/
+    Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
+    ListTable.php                   WP_List_Table: search + paginated list of serial numbers
+    FormController.php              Add New form render + validation + save
+    Ajax.php                        wp_ajax_snw_search_products / snw_search_orders (selectWoo AJAX search)
   Pro/                              Reserved for Pro-only classes (empty for now)
+assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits selectWoo AJAX search
 ```
+
+## Data model
+
+- `{$wpdb->prefix}snw_serial_numbers` (created in `Install::activate()`): `id`,
+  `serial_number` (unique), `status`, `product_id` (nullable), `order_id`
+  (nullable), `created_at`, `expires_at` (nullable). Product/order columns
+  store IDs only — always resolve via `wc_get_product()` / `wc_get_order()`
+  rather than joining WC's tables directly, so this keeps working under HPOS.
+- Status values live in `FormController::STATUSES` (currently `active`,
+  `inactive`, `expired`, `revoked`) — the single place to add/rename statuses.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
