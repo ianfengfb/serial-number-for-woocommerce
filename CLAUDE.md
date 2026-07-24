@@ -38,7 +38,7 @@ includes/
   Admin/SerialNumbers/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
     ListTable.php                   WP_List_Table: search + paginated list of serial numbers
-    FormController.php              Add New form render + validation + save
+    FormController.php              Add New / Edit form render + validation + save
     Ajax.php                        wp_ajax_snw_search_products / snw_search_orders (selectWoo AJAX search)
   Pro/                              Reserved for Pro-only classes (empty for now)
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search

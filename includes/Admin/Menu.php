@@ -83,6 +83,14 @@ final class Menu {
 			return;
 		}
 
+		if ( 'edit' === $action ) {
+			$id   = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+			$form = new FormController( $id );
+			$form->handle();
+			$form->render();
+			return;
+		}
+
 		$this->render_list();
 	}
 
@@ -105,6 +113,10 @@ final class Menu {
 			<?php if ( isset( $_GET['snw_notice'] ) && 'added' === $_GET['snw_notice'] ) : ?>
 				<div class="notice notice-success is-dismissible">
 					<p><?php esc_html_e( 'Serial number added.', 'serial-number-for-woocommerce' ); ?></p>
+				</div>
+			<?php elseif ( isset( $_GET['snw_notice'] ) && 'updated' === $_GET['snw_notice'] ) : ?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php esc_html_e( 'Serial number updated.', 'serial-number-for-woocommerce' ); ?></p>
 				</div>
 			<?php endif; ?>
 

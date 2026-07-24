@@ -57,11 +57,29 @@ final class ListTable extends \WP_List_Table {
 		esc_html_e( 'No serial numbers found.', 'serial-number-for-woocommerce' );
 	}
 
+	protected function get_default_primary_column_name(): string {
+		return 'serial_number';
+	}
+
+	public function column_serial_number( $item ): string {
+		$edit_url = add_query_arg(
+			array(
+				'page'   => 'serial-number-for-woocommerce',
+				'action' => 'edit',
+				'id'     => $item->id,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		$actions = array(
+			'edit' => sprintf( '<a href="%s">%s</a>', esc_url( $edit_url ), esc_html__( 'Edit', 'serial-number-for-woocommerce' ) ),
+		);
+
+		return esc_html( $item->serial_number ) . $this->row_actions( $actions );
+	}
+
 	public function column_default( $item, $column_name ) {
 		switch ( $column_name ) {
-			case 'serial_number':
-				return esc_html( $item->serial_number );
-
 			case 'status':
 				return esc_html( ucfirst( $item->status ) );
 

@@ -43,10 +43,7 @@ final class Ajax {
 
 		$results = array();
 		foreach ( $products as $product ) {
-			$results[] = array(
-				'id'   => $product->get_id(),
-				'text' => sprintf( '%s (#%d)', $product->get_name(), $product->get_id() ),
-			);
+			$results[] = self::format_product_option( $product );
 		}
 
 		wp_send_json_success( $results );
@@ -73,12 +70,23 @@ final class Ajax {
 				continue;
 			}
 
-			$results[] = array(
-				'id'   => $order_id,
-				'text' => sprintf( '#%s %s', $order->get_order_number(), trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ) ),
-			);
+			$results[] = self::format_order_option( $order );
 		}
 
 		wp_send_json_success( $results );
+	}
+
+	public static function format_product_option( \WC_Product $product ): array {
+		return array(
+			'id'   => $product->get_id(),
+			'text' => sprintf( '%s (#%d)', $product->get_name(), $product->get_id() ),
+		);
+	}
+
+	public static function format_order_option( \WC_Order $order ): array {
+		return array(
+			'id'   => $order->get_id(),
+			'text' => sprintf( '#%s %s', $order->get_order_number(), trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ) ),
+		);
 	}
 }
