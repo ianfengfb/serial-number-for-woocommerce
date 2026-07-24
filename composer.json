@@ -1,0 +1,14 @@
+{
+    "name": "ianfengfb/serial-number-for-woocommerce",
+    "description": "Assign and manage serial numbers for WooCommerce products and orders.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "SerialNumberForWooCommerce\\": "includes/"
+        }
+    }
+}

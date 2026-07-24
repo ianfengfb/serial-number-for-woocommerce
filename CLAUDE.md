@@ -1,0 +1,64 @@
+# Serial Number for WooCommerce
+
+A commercial WooCommerce extension for assigning and managing serial numbers
+on products/orders. Distributed as a free (Lite) tier plus a paid Pro tier.
+
+## Free/Pro architecture rules
+
+- **Single codebase, gated by `Licensing::is_pro_active()`.** Every class that
+  implements a Pro-only feature must check this before doing anything, and
+  must live under the `SerialNumberForWooCommerce\Pro\` namespace
+  (`includes/Pro/`). Free-tier code lives directly under
+  `SerialNumberForWooCommerce\` (`includes/`).
+- **Never build a Pro feature unlocked-by-default in the shipped code.**
+  Gate it from the moment it's created — don't build features free first and
+  retrofit gating later.
+- **Local dev unlock:** define `SNW_DEV_UNLOCK_ALL` as `true` in `wp-config.php`
+  to make `Licensing::is_pro_active()` return `true` everywhere, so every Pro
+  feature can be exercised during development without a real license. This
+  constant must never ship enabled and is not read from anywhere but
+  `Licensing`.
+- **Release packaging (when we get there):** the free/Lite zip is built by
+  excluding `includes/Pro/` from the package; the Pro zip includes everything
+  plus a real license-activation flow (licensing SDK/service TBD — e.g.
+  Freemius or EDD Software Licensing). `Licensing::is_pro_active()` is the
+  only integration point that will need to change to talk to a real license
+  check — nothing else in the codebase should.
+
+## Structure
+
+```
+serial-number-for-woocommerce.php   Plugin bootstrap: header, constants, WC dependency check, HPOS compat
+composer.json                       PSR-4 autoload (SerialNumberForWooCommerce\ -> includes/)
+includes/
+  Plugin.php                        Singleton; wires up free + Pro features on init()
+  Licensing.php                     is_pro_active() gate (see above)
+  Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page
+  Pro/                              Reserved for Pro-only classes (empty for now)
+```
+
+Namespaces map 1:1 to folders (PSR-4), files are named after the class they
+contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
+`class-*.php` prefixing.
+
+## Local testing
+
+This repo is meant to be used directly as the plugin folder, e.g. symlinked
+or cloned into `wp-content/plugins/serial-number-for-woocommerce/` on a Local
+WordPress site.
+
+Before activating the plugin:
+
+1. Run `composer install` in the plugin directory (needed for autoloading —
+   the plugin shows an admin notice and refuses to load if `vendor/` is
+   missing).
+2. Make sure WooCommerce is installed and active (the plugin no-ops with an
+   admin notice otherwise).
+
+## Conventions
+
+- PHP 7.4+ syntax, typed properties/returns where practical.
+- Prefix for global constants/hooks/text domain: `snw` / `SNW_`.
+- Text domain: `serial-number-for-woocommerce`.
+- No build step for PHP; a `vendor/` Composer autoloader is the only
+  generated artifact required to run the plugin.
