@@ -46,6 +46,7 @@ includes/
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/bulk-generate routing)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
+  Admin/Products/ProductTab.php     Free tier: "Serial Number" tab on the product edit screen (enable checkbox for now)
   Admin/SerialNumbers/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
     ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
