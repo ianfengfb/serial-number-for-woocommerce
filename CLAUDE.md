@@ -87,6 +87,8 @@ contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
 - **Feature/fix branches** — created off `dev` for each major feature or bug
   fix, merged back into `dev` when finished. Branch off the latest `dev`, not
   `master`.
+- **Docs-only and minor changes** (typo fixes, small tweaks, this file) can be
+  committed straight to `dev` — no separate branch needed.
 
 Flow: `feature-or-fix branch -> dev` (as each one finishes) `-> master`
 (once `dev` has accumulated one or more finished items and tested clean).
