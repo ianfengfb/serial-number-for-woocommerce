@@ -76,6 +76,21 @@ Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
 `class-*.php` prefixing.
 
+## Branching strategy
+
+- **`master`** — stable, released code only. A merge into `master` is always
+  treated as a version bump: update the `Version:` header in
+  `serial-number-for-woocommerce.php` and the `SNW_VERSION` constant together
+  as part of that merge.
+- **`dev`** — integration branch. Completed feature/fix branches land here
+  first and get tested together before `dev` is considered releasable.
+- **Feature/fix branches** — created off `dev` for each major feature or bug
+  fix, merged back into `dev` when finished. Branch off the latest `dev`, not
+  `master`.
+
+Flow: `feature-or-fix branch -> dev` (as each one finishes) `-> master`
+(once `dev` has accumulated one or more finished items and tested clean).
+
 ## Local testing
 
 This repo is meant to be used directly as the plugin folder, e.g. symlinked
