@@ -23,6 +23,7 @@ final class Plugin {
 	public function init(): void {
 		new Admin\Menu();
 		new Admin\Products\ProductTab();
+		new Orders\Assigner();
 
 		add_filter(
 			'woocommerce_get_settings_pages',
