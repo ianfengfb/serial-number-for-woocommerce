@@ -1,7 +1,7 @@
 <?php
 namespace SerialNumberForWooCommerce\Admin;
 
-use SerialNumberForWooCommerce\Admin\SerialNumbers\FormController;
+use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,11 +27,6 @@ final class Settings extends \WC_Settings_Page {
 	 * Settings shown on the tab's default (only) section.
 	 */
 	public function get_settings_for_default_section(): array {
-		$status_options = array();
-		foreach ( FormController::STATUSES as $value => $label ) {
-			$status_options[ $value ] = $label;
-		}
-
 		return array(
 			array(
 				'title' => __( 'General', 'serial-number-for-woocommerce' ),
@@ -45,8 +40,8 @@ final class Settings extends \WC_Settings_Page {
 				'id'       => 'snw_default_status',
 				'type'     => 'select',
 				'class'    => 'wc-enhanced-select',
-				'default'  => 'active',
-				'options'  => $status_options,
+				'default'  => Status::FALLBACK,
+				'options'  => Status::all(),
 				'desc_tip' => true,
 			),
 			array(

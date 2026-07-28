@@ -8,13 +8,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class FormController {
 
-	const STATUSES = array(
-		'active'   => 'Active',
-		'inactive' => 'Inactive',
-		'expired'  => 'Expired',
-		'revoked'  => 'Revoked',
-	);
-
 	private int $id;
 
 	private ?object $existing = null;
@@ -66,7 +59,7 @@ final class FormController {
 			$this->errors[] = __( 'This serial number already exists.', 'serial-number-for-woocommerce' );
 		}
 
-		if ( ! isset( self::STATUSES[ $status ] ) ) {
+		if ( ! Status::exists( $status ) ) {
 			$this->errors[] = __( 'Please choose a valid status.', 'serial-number-for-woocommerce' );
 		}
 
@@ -141,11 +134,7 @@ final class FormController {
 
 	public function render(): void {
 		$back_url       = add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) );
-		$default_status = get_option( 'snw_default_status', 'active' );
-		if ( ! isset( self::STATUSES[ $default_status ] ) ) {
-			$default_status = 'active';
-		}
-		$status_default = $this->field( 'status', $default_status );
+		$status_default = $this->field( 'status', Status::configured_default() );
 		$expires_at      = $this->field( 'expires_at' );
 		if ( '' !== $expires_at && ! isset( $_POST['expires_at'] ) ) {
 			$expires_at = substr( $expires_at, 0, 10 );
@@ -189,7 +178,7 @@ final class FormController {
 						<th><label for="snw-status"><?php esc_html_e( 'Status', 'serial-number-for-woocommerce' ); ?></label></th>
 						<td>
 							<select id="snw-status" name="status">
-								<?php foreach ( self::STATUSES as $value => $label ) : ?>
+								<?php foreach ( Status::all() as $value => $label ) : ?>
 									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $status_default, $value ); ?>>
 										<?php echo esc_html( $label ); ?>
 									</option>

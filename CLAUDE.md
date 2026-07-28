@@ -51,6 +51,7 @@ includes/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
     ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
     FormController.php              Add New / Edit form render + validation + save
+    Status.php                      Serial number lifecycle statuses: values, labels, configured default
     Generator.php                   Builds a random serial from the configured (or per-call override) rules
     Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial
   Pro/
@@ -70,8 +71,23 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   (nullable), `created_at`, `expires_at` (nullable). Product/order columns
   store IDs only — always resolve via `wc_get_product()` / `wc_get_order()`
   rather than joining WC's tables directly, so this keeps working under HPOS.
-- Status values live in `FormController::STATUSES` (currently `active`,
-  `inactive`, `expired`, `revoked`) — the single place to add/rename statuses.
+- Status values live in `SerialNumbers\Status` — the single place to
+  add/rename/reorder them. The lifecycle is:
+  - `available` — in the pool, not tied to an order; the only status
+    auto-assignment picks from.
+  - `assigned` — attached to an order/customer, not used yet.
+  - `activated` — redeemed/registered by the customer, in use.
+  - `expired` — past `expires_at`, no longer valid.
+  - `unavailable` — deliberately withheld (revoked/refunded/faulty/reserved);
+    never handed out but kept on record.
+
+  Always store/compare the lowercase keys (`Status::AVAILABLE` etc.); labels
+  from `Status::all()` / `Status::label()` are translated display strings only.
+  `Status::configured_default()` resolves the `snw_default_status` option for
+  new serials, so no caller should read that option directly.
+  `Install::LEGACY_STATUS_MAP` maps the pre-rename values (`active`,
+  `inactive`, `revoked`) and is applied to existing rows and to the saved
+  default on activation.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
