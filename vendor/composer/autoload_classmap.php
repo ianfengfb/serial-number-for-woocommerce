@@ -14,9 +14,12 @@ return array(
     'SerialNumberForWooCommerce\\Admin\\SerialNumbers\\Generator' => $baseDir . '/includes/Admin/SerialNumbers/Generator.php',
     'SerialNumberForWooCommerce\\Admin\\SerialNumbers\\ListTable' => $baseDir . '/includes/Admin/SerialNumbers/ListTable.php',
     'SerialNumberForWooCommerce\\Admin\\SerialNumbers\\Repository' => $baseDir . '/includes/Admin/SerialNumbers/Repository.php',
+    'SerialNumberForWooCommerce\\Admin\\SerialNumbers\\Status' => $baseDir . '/includes/Admin/SerialNumbers/Status.php',
     'SerialNumberForWooCommerce\\Admin\\Settings' => $baseDir . '/includes/Admin/Settings.php',
     'SerialNumberForWooCommerce\\Install' => $baseDir . '/includes/Install.php',
     'SerialNumberForWooCommerce\\Licensing' => $baseDir . '/includes/Licensing.php',
+    'SerialNumberForWooCommerce\\Orders\\Assigner' => $baseDir . '/includes/Orders/Assigner.php',
     'SerialNumberForWooCommerce\\Plugin' => $baseDir . '/includes/Plugin.php',
     'SerialNumberForWooCommerce\\Pro\\BulkGenerate\\Controller' => $baseDir . '/includes/Pro/BulkGenerate/Controller.php',
+    'SerialNumberForWooCommerce\\Products\\StockSync' => $baseDir . '/includes/Products/StockSync.php',
 );
