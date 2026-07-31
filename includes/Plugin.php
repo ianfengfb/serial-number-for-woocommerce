@@ -24,6 +24,7 @@ final class Plugin {
 		new Admin\Menu();
 		new Admin\Products\ProductTab();
 		new Orders\Assigner();
+		new Orders\ItemDisplay();
 
 		add_filter(
 			'woocommerce_get_settings_pages',

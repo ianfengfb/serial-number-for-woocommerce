@@ -56,6 +56,7 @@ includes/
     Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial
   Orders/
     Assigner.php                    Free tier: assigns serials to order line items when an order is placed
+    ItemDisplay.php                 Free tier: shows an item's assigned serials on the admin order edit screen
   Products/
     StockSync.php                   Free tier: mirrors a product's Available pool count onto WC stock
   Pro/
@@ -133,6 +134,12 @@ future claiming code on that pattern rather than a plain SELECT-then-UPDATE.
 `Assigner::assign_for_order()` is public and static precisely so later features
 (manual re-assign, status-transition triggers) can reuse it; it only ever
 assigns the difference between an item's quantity and the serials it holds.
+
+`Orders\ItemDisplay` hooks `woocommerce_after_order_itemmeta` to show each
+item's assigned serials (resolved from `Assigner::serial_ids()` via
+`Repository::find()`) on the admin order edit screen — read-only, no new
+data, so it's the one place both HPOS and legacy order storage need no
+special handling.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
