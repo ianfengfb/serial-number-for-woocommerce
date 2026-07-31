@@ -117,6 +117,13 @@ a successful pool claim — `generate_assigned()`'s fallback path never touches
 the pool, so it never needs a sync). Any future code path that changes which
 serials are Available for a product must call `StockSync::sync()` too.
 
+`StockSync::sync()` always wins over a manual edit — it unconditionally
+overwrites `_stock` on every call, with no check for whether a human just set
+it. `ProductTab`'s inline script reflects that in the UI: while both
+checkboxes are on, WooCommerce's native stock quantity field (`#_stock`, on
+the Inventory tab) is disabled with a short note explaining why, toggled
+live as either checkbox changes.
+
 ## Order assignment
 
 `Orders\Assigner` runs on `woocommerce_checkout_order_processed` (classic) and
