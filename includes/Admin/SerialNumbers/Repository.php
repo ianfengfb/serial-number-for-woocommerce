@@ -8,6 +8,12 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Repository {
 
+	/**
+	 * How many times claim_available() re-reads the pool after losing a row to
+	 * a concurrent claim before giving up and letting the caller generate one.
+	 */
+	const CLAIM_ATTEMPTS = 5;
+
 	public static function table_name(): string {
 		global $wpdb;
 
@@ -64,10 +70,16 @@ final class Repository {
 		);
 	}
 
+	/**
+	 * Returns the new row's ID, or 0 when the insert failed — e.g. because the
+	 * serial number collided with the unique key. `$wpdb->insert_id` keeps its
+	 * previous value on a failed query, so it is only trustworthy after a
+	 * successful one.
+	 */
 	public static function insert( array $data ): int {
 		global $wpdb;
 
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			self::table_name(),
 			array(
 				'serial_number' => $data['serial_number'],
@@ -80,7 +92,60 @@ final class Repository {
 			array( '%s', '%s', '%d', '%d', '%s', '%s' )
 		);
 
-		return (int) $wpdb->insert_id;
+		return $inserted ? (int) $wpdb->insert_id : 0;
+	}
+
+	/**
+	 * Takes one available serial number out of the pool for a product and marks
+	 * it Assigned to the given order, returning its ID (0 when the pool is empty).
+	 *
+	 * The claim is a compare-and-swap: the UPDATE only matches while the row is
+	 * still Available, so two simultaneous checkouts can never be handed the same
+	 * serial — the loser sees 0 affected rows and reads the next candidate.
+	 * Rows already past their expiry date are skipped rather than handed out.
+	 */
+	public static function claim_available( int $product_id, int $order_id ): int {
+		global $wpdb;
+
+		$table = self::table_name();
+		$now   = current_time( 'mysql' );
+
+		for ( $attempt = 0; $attempt < self::CLAIM_ATTEMPTS; $attempt++ ) {
+			$id = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$table}
+					WHERE status = %s
+						AND product_id = %d
+						AND ( order_id IS NULL OR order_id = 0 )
+						AND ( expires_at IS NULL OR expires_at > %s )
+					ORDER BY id ASC
+					LIMIT 1",
+					Status::AVAILABLE,
+					$product_id,
+					$now
+				)
+			);
+
+			if ( ! $id ) {
+				return 0;
+			}
+
+			$claimed = $wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$table} SET status = %s, order_id = %d WHERE id = %d AND status = %s",
+					Status::ASSIGNED,
+					$order_id,
+					$id,
+					Status::AVAILABLE
+				)
+			);
+
+			if ( $claimed ) {
+				return $id;
+			}
+		}
+
+		return 0;
 	}
 
 	public static function search( string $search, int $per_page, int $page ): array {

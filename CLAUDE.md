@@ -51,8 +51,11 @@ includes/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
     ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
     FormController.php              Add New / Edit form render + validation + save
+    Status.php                      Serial number lifecycle statuses: values, labels, configured default
     Generator.php                   Builds a random serial from the configured (or per-call override) rules
     Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial
+  Orders/
+    Assigner.php                    Free tier: assigns serials to order line items when an order is placed
   Pro/
     BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
@@ -70,8 +73,48 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   (nullable), `created_at`, `expires_at` (nullable). Product/order columns
   store IDs only — always resolve via `wc_get_product()` / `wc_get_order()`
   rather than joining WC's tables directly, so this keeps working under HPOS.
-- Status values live in `FormController::STATUSES` (currently `active`,
-  `inactive`, `expired`, `revoked`) — the single place to add/rename statuses.
+- Status values live in `SerialNumbers\Status` — the single place to
+  add/rename/reorder them. The lifecycle is:
+  - `available` — in the pool, not tied to an order; the only status
+    auto-assignment picks from.
+  - `assigned` — attached to an order/customer, not used yet.
+  - `activated` — redeemed/registered by the customer, in use.
+  - `expired` — past `expires_at`, no longer valid.
+  - `unavailable` — deliberately withheld (revoked/refunded/faulty/reserved);
+    never handed out but kept on record.
+
+  Always store/compare the lowercase keys (`Status::AVAILABLE` etc.); labels
+  from `Status::all()` / `Status::label()` are translated display strings only.
+  `Status::configured_default()` resolves the `snw_default_status` option for
+  new serials, so no caller should read that option directly.
+  `Install::LEGACY_STATUS_MAP` maps the pre-rename values (`active`,
+  `inactive`, `revoked`) and is applied to existing rows and to the saved
+  default on activation.
+
+- Per-product opt-in is the `_snw_enabled` post meta (`yes`/`no`) on the parent
+  product — `ProductTab::META_KEY`.
+- Serials handed to an order live on the line item, not the order: the
+  `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
+  of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
+  read it via `Assigner::serial_ids()` before assigning anything new.
+
+## Order assignment
+
+`Orders\Assigner` runs on `woocommerce_checkout_order_processed` (classic) and
+`woocommerce_store_api_checkout_order_processed` /
+`woocommerce_blocks_checkout_order_processed` (blocks). For each line item whose
+parent product has `_snw_enabled`, it tops the item up to **one serial per
+ordered unit**: `Repository::claim_available()` takes Available, unexpired,
+order-less serials from that product's pool first, and any shortfall is
+generated from the global rules via `Generator::generate()`. Both paths leave
+the serial `Status::ASSIGNED` with `order_id` set.
+
+Pool claims are a compare-and-swap `UPDATE ... WHERE id = %d AND status =
+'available'` so concurrent checkouts can't be handed the same serial — keep any
+future claiming code on that pattern rather than a plain SELECT-then-UPDATE.
+`Assigner::assign_for_order()` is public and static precisely so later features
+(manual re-assign, status-transition triggers) can reuse it; it only ever
+assigns the difference between an item's quantity and the serials it holds.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy

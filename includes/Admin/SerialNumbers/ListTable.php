@@ -81,7 +81,7 @@ final class ListTable extends \WP_List_Table {
 	public function column_default( $item, $column_name ) {
 		switch ( $column_name ) {
 			case 'status':
-				return esc_html( ucfirst( $item->status ) );
+				return esc_html( Status::label( $item->status ) );
 
 			case 'product':
 				if ( ! $item->product_id ) {

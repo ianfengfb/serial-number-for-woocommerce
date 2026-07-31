@@ -3,6 +3,7 @@ namespace SerialNumberForWooCommerce\Pro\BulkGenerate;
 
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Generator;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
+use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
 use SerialNumberForWooCommerce\Licensing;
 
 defined( 'ABSPATH' ) || exit;
@@ -43,7 +44,7 @@ final class Controller {
 			return;
 		}
 
-		$default_status = get_option( 'snw_default_status', 'active' );
+		$default_status = Status::configured_default();
 		$total          = 0;
 
 		foreach ( $rows as $row ) {

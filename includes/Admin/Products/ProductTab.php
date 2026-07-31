@@ -38,6 +38,7 @@ final class ProductTab {
 						'id'          => self::META_KEY,
 						'label'       => __( 'Enable serial numbers', 'serial-number-for-woocommerce' ),
 						'description' => __( 'When an order is placed for this product, a serial number is assigned automatically — one already in the pool if available, otherwise a new one is generated using the rules in WooCommerce > Settings > Serial Numbers.', 'serial-number-for-woocommerce' ),
+						'desc_tip'    => true,
 						'value'       => get_post_meta( $post->ID, self::META_KEY, true ),
 					)
 				);
