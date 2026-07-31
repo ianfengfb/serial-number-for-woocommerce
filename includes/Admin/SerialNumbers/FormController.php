@@ -1,6 +1,8 @@
 <?php
 namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
 
+use SerialNumberForWooCommerce\Products\StockSync;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -80,11 +82,20 @@ final class FormController {
 		);
 
 		if ( $this->is_edit() ) {
+			$previous_product_id = (int) ( $this->existing->product_id ?? 0 );
 			Repository::update( $this->id, $data );
 			$notice = 'updated';
+
+			if ( $previous_product_id && $previous_product_id !== $product_id ) {
+				StockSync::sync( $previous_product_id );
+			}
 		} else {
 			Repository::insert( $data );
 			$notice = 'added';
+		}
+
+		if ( $product_id ) {
+			StockSync::sync( $product_id );
 		}
 
 		wp_safe_redirect(

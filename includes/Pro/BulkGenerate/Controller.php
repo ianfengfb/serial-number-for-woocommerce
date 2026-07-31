@@ -5,6 +5,7 @@ use SerialNumberForWooCommerce\Admin\SerialNumbers\Generator;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
 use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Products\StockSync;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -60,6 +61,8 @@ final class Controller {
 				);
 				++$total;
 			}
+
+			StockSync::sync( $row['product_id'] );
 		}
 
 		wp_safe_redirect(

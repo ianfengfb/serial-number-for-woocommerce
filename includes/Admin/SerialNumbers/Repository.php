@@ -148,6 +148,29 @@ final class Repository {
 		return 0;
 	}
 
+	/**
+	 * Counts a product's Available, unexpired serial numbers — the number
+	 * StockSync mirrors onto WooCommerce stock when that's switched on.
+	 */
+	public static function count_available( int $product_id ): int {
+		global $wpdb;
+
+		$table = self::table_name();
+		$now   = current_time( 'mysql' );
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$table}
+				WHERE status = %s
+					AND product_id = %d
+					AND ( expires_at IS NULL OR expires_at > %s )",
+				Status::AVAILABLE,
+				$product_id,
+				$now
+			)
+		);
+	}
+
 	public static function search( string $search, int $per_page, int $page ): array {
 		global $wpdb;
 

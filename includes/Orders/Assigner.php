@@ -5,6 +5,7 @@ use SerialNumberForWooCommerce\Admin\Products\ProductTab;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Generator;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
+use SerialNumberForWooCommerce\Products\StockSync;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -61,7 +62,8 @@ final class Assigner {
 	 * were handed out on this run.
 	 */
 	public static function assign_for_order( \WC_Order $order ): int {
-		$assigned = 0;
+		$assigned         = 0;
+		$claimed_products = array();
 
 		foreach ( $order->get_items() as $item ) {
 			if ( ! $item instanceof \WC_Order_Item_Product ) {
@@ -86,7 +88,9 @@ final class Assigner {
 			for ( $i = 0; $i < $needed; $i++ ) {
 				$serial_id = Repository::claim_available( $product_id, $order->get_id() );
 
-				if ( ! $serial_id ) {
+				if ( $serial_id ) {
+					$claimed_products[ $product_id ] = true;
+				} else {
 					$serial_id = self::generate_assigned( $product_id, $order->get_id() );
 				}
 
@@ -104,6 +108,12 @@ final class Assigner {
 				$item->update_meta_data( self::ITEM_META_KEY, $serial_ids );
 				$item->save();
 			}
+		}
+
+		// Only claiming from the pool changes a product's Available count —
+		// generate_assigned() never touches it, so it's excluded here.
+		foreach ( array_keys( $claimed_products ) as $product_id ) {
+			StockSync::sync( $product_id );
 		}
 
 		return $assigned;
