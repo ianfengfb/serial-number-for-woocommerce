@@ -46,7 +46,7 @@ includes/
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/bulk-generate routing)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
-  Admin/Products/ProductTab.php     Free tier: "Serial Number" tab on the product edit screen (enable checkbox for now)
+  Admin/Products/ProductTab.php     Free tier: "Serial Number" tab on the product edit screen (enable + manage-stock checkboxes)
   Admin/SerialNumbers/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
     ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
@@ -56,6 +56,8 @@ includes/
     Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial
   Orders/
     Assigner.php                    Free tier: assigns serials to order line items when an order is placed
+  Products/
+    StockSync.php                   Free tier: mirrors a product's Available pool count onto WC stock
   Pro/
     BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
@@ -92,11 +94,27 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   default on activation.
 
 - Per-product opt-in is the `_snw_enabled` post meta (`yes`/`no`) on the parent
-  product — `ProductTab::META_KEY`.
+  product — `ProductTab::META_KEY`. `_snw_manage_stock`
+  (`ProductTab::MANAGE_STOCK_META_KEY`) is a second, dependent per-product
+  meta — see Stock sync below.
 - Serials handed to an order live on the line item, not the order: the
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
   read it via `Assigner::serial_ids()` before assigning anything new.
+
+## Stock sync
+
+`Products\StockSync::sync( $product_id )` recomputes and writes a product's
+WooCommerce stock (`_manage_stock`, `_stock`, `_stock_status`) from
+`Repository::count_available()` — the product's Available, unexpired serial
+count. It no-ops unless *both* `_snw_enabled` and `_snw_manage_stock` are
+`yes`, so it's always safe to call after anything that might change a
+product's pool: `ProductTab::save()`, `FormController::save()` (syncing the
+old product too if a serial's product changed), `Pro\BulkGenerate\Controller`
+(once per row), and `Assigner::assign_for_order()` (once per product that had
+a successful pool claim — `generate_assigned()`'s fallback path never touches
+the pool, so it never needs a sync). Any future code path that changes which
+serials are Available for a product must call `StockSync::sync()` too.
 
 ## Order assignment
 
