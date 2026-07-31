@@ -65,8 +65,30 @@ final class ProductTab {
 					$( '.snw_manage_stock_field' ).toggle( $( '#<?php echo esc_js( self::META_KEY ); ?>' ).is( ':checked' ) );
 				}
 
-				$( '#<?php echo esc_js( self::META_KEY ); ?>' ).on( 'change', snwToggleManageStockField );
+				function snwToggleStockQuantityLock() {
+					var lockedBySN = $( '#<?php echo esc_js( self::META_KEY ); ?>' ).is( ':checked' ) &&
+						$( '#<?php echo esc_js( self::MANAGE_STOCK_META_KEY ); ?>' ).is( ':checked' );
+					var $stock  = $( '#_stock' );
+					var $notice = $( '#snw-stock-locked-notice' );
+
+					if ( ! $notice.length ) {
+						$notice = $( '<span id="snw-stock-locked-notice" class="description" style="display:block;"></span>' )
+							.text( <?php echo wp_json_encode( __( 'Stock is managed automatically from the Serial Number pool while "Manage product stock with Serial Number" is enabled.', 'serial-number-for-woocommerce' ) ); ?> )
+							.insertAfter( $stock );
+					}
+
+					$stock.prop( 'disabled', lockedBySN );
+					$notice.toggle( lockedBySN );
+				}
+
+				$( '#<?php echo esc_js( self::META_KEY ); ?>, #<?php echo esc_js( self::MANAGE_STOCK_META_KEY ); ?>' )
+					.on( 'change', function () {
+						snwToggleManageStockField();
+						snwToggleStockQuantityLock();
+					} );
+
 				snwToggleManageStockField();
+				snwToggleStockQuantityLock();
 			} )( jQuery );
 			</script>
 		</div>
