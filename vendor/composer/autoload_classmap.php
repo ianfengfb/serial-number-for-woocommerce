@@ -19,6 +19,7 @@ return array(
     'SerialNumberForWooCommerce\\Install' => $baseDir . '/includes/Install.php',
     'SerialNumberForWooCommerce\\Licensing' => $baseDir . '/includes/Licensing.php',
     'SerialNumberForWooCommerce\\Orders\\Assigner' => $baseDir . '/includes/Orders/Assigner.php',
+    'SerialNumberForWooCommerce\\Orders\\ItemDisplay' => $baseDir . '/includes/Orders/ItemDisplay.php',
     'SerialNumberForWooCommerce\\Plugin' => $baseDir . '/includes/Plugin.php',
     'SerialNumberForWooCommerce\\Pro\\BulkGenerate\\Controller' => $baseDir . '/includes/Pro/BulkGenerate/Controller.php',
     'SerialNumberForWooCommerce\\Products\\StockSync' => $baseDir . '/includes/Products/StockSync.php',
