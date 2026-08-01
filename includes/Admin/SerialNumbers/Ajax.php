@@ -1,6 +1,8 @@
 <?php
 namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
 
+use SerialNumberForWooCommerce\Products\StockSync;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -12,12 +14,60 @@ final class Ajax {
 		add_action( 'wp_ajax_snw_search_products', array( $this, 'search_products' ) );
 		add_action( 'wp_ajax_snw_search_orders', array( $this, 'search_orders' ) );
 		add_action( 'wp_ajax_snw_generate_serial', array( $this, 'generate_serial' ) );
+		add_action( 'wp_ajax_snw_import_serials', array( $this, 'import_serials' ) );
 	}
 
 	public function generate_serial(): void {
 		$this->check_request();
 
 		wp_send_json_success( array( 'serial_number' => Generator::generate() ) );
+	}
+
+	/**
+	 * Creates serials from the Serial Number tab's bulk-add textarea,
+	 * connected to the given product. Backs the "Add to Pool" button.
+	 */
+	public function import_serials(): void {
+		$this->check_request();
+
+		$product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+		$raw        = isset( $_POST['serials'] ) ? (string) wp_unslash( $_POST['serials'] ) : '';
+
+		if ( ! $product_id || ! wc_get_product( $product_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid product.', 'serial-number-for-woocommerce' ) ) );
+		}
+
+		$result = Repository::import_for_product( $product_id, $raw );
+
+		if ( $result['created'] ) {
+			StockSync::sync( $product_id );
+		}
+
+		wp_send_json_success(
+			array(
+				'message' => self::import_summary_message( $result ),
+				'created' => $result['created'],
+				'skipped' => $result['skipped'],
+			)
+		);
+	}
+
+	private static function import_summary_message( array $result ): string {
+		$message = sprintf(
+			/* translators: %d: number of serial numbers created */
+			_n( '%d serial number added.', '%d serial numbers added.', $result['created'], 'serial-number-for-woocommerce' ),
+			$result['created']
+		);
+
+		if ( ! empty( $result['skipped'] ) ) {
+			$message .= ' ' . sprintf(
+				/* translators: %d: number of duplicate serial numbers skipped */
+				_n( '%d duplicate skipped.', '%d duplicates skipped.', count( $result['skipped'] ), 'serial-number-for-woocommerce' ),
+				count( $result['skipped'] )
+			);
+		}
+
+		return $message;
 	}
 
 	private function check_request(): void {
