@@ -35,16 +35,21 @@ on products/orders. Distributed as a free (Lite) tier plus a paid Pro tier.
   (Pro code calling Free classes, e.g. `Repository`, `Generator`) is always
   fine and expected.
 - **Visible-but-disabled Pro teasers render from Free code, not Pro code.**
-  When a Pro feature is small enough to show as a greyed-out control next to
-  its related Free feature (rather than hiding it entirely, like the Bulk
-  Generate button does), the disabled markup + "PRO" badge has to be written
-  in the Free-tier file, because it must render even in the free zip where
+  Pro controls stay visible but greyed out with a "PRO" badge when
+  unlicensed, rather than being hidden — it upsells in context instead of
+  hiding that the feature exists. That teaser markup has to be written in
+  the Free-tier file, because it must render even in the free zip where
   `includes/Pro/` doesn't exist — a Pro class can't be instantiated to draw
-  its own teaser. `Admin\Products\ProductTab` is the example: it renders the
-  "Manage product stock with Serial Number" checkbox's teaser (unlicensed) or
-  hands off entirely to `Pro\StockSync\StockSync` for the real save/sync
-  logic (licensed) — either way, the actual Pro *behavior* stays gated and
-  out of Free code; only the inert preview markup lives there.
+  its own teaser. `Admin\Products\ProductTab` is the example for inline
+  controls: it renders the "Manage product stock with Serial Number" and
+  "custom auto-generation rule" checkboxes' teasers (unlicensed) or hands off
+  entirely to `Pro\StockSync\StockSync` / `Pro\CustomRules\CustomRules` for
+  the real save/sync logic (licensed). `Admin\Menu` does the same for a
+  whole page: the "Bulk Generate" button always shows, but unlicensed it
+  links to a static teaser notice instead of instantiating
+  `Pro\BulkGenerate\Controller` at all. Either way, the actual Pro
+  *behavior* stays gated and out of Free code; only inert preview markup
+  lives there.
 
 ## Structure
 
@@ -57,9 +62,9 @@ includes/
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/bulk-generate routing)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
-  Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, split into a Free Features area and a Pro
-                                     Features area (see Free/Pro architecture rules above for why the Pro
-                                     checkbox's disabled/teaser markup lives here rather than under Pro/)
+  Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, unlabeled Free area plus a "Pro Features"
+                                     area (see Free/Pro architecture rules above for why the Pro controls'
+                                     disabled/teaser markup lives here rather than under Pro/)
   Admin/SerialNumbers/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
     ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
@@ -72,6 +77,8 @@ includes/
     ItemDisplay.php                 Free tier: shows an item's assigned serials on the admin order edit screen
   Pro/
     StockSync/StockSync.php         Pro: mirrors a product's Available pool count onto WC stock
+    CustomRules/CustomRules.php     Pro: a product's own auto-generation rule, overriding the global one
+    CustomRules/Ajax.php            Pro: wp_ajax_snw_bulk_generate_for_product (product tab's own bulk-generate)
     BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
@@ -108,9 +115,13 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
 
 - Per-product opt-in is the `_snw_enabled` post meta (`yes`/`no`) on the parent
   product — `ProductTab::META_KEY`. `_snw_manage_stock`
-  (`ProductTab::MANAGE_STOCK_META_KEY`) is a second, dependent per-product
-  meta, Pro-gated — `ProductTab::save()` never persists it as `yes` without a
-  license — see Stock sync below.
+  (`ProductTab::MANAGE_STOCK_META_KEY`) and `_snw_custom_rule_enabled`
+  (`ProductTab::CUSTOM_RULE_ENABLED_META_KEY`) are further dependent
+  per-product meta, both Pro-gated — `ProductTab::save()` never persists
+  either as `yes` without a license — see Stock sync and Custom generation
+  rules below. The meta-key constants live on the Free `ProductTab` class
+  (not the Pro classes that act on them) precisely so Free code can render
+  their teaser markup and gate their persistence without referencing Pro.
 - Serials handed to an order live on the line item, not the order: the
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
@@ -147,6 +158,34 @@ it. `ProductTab`'s inline script reflects that in the UI: while both
 checkboxes are on (and licensed), WooCommerce's native stock quantity field
 (`#_stock`, on the Inventory tab) is disabled with a short note explaining
 why, toggled live as either checkbox changes.
+
+## Custom generation rules (Pro)
+
+`Generator::generate( array $overrides = array() )` takes any of `prefix`,
+`suffix`, `length`, `charset`; each falls back independently to its global
+`snw_auto_*` option when left unset or empty, so a caller only needs to pass
+the fields it wants to override.
+
+`Pro\CustomRules\CustomRules::resolve_overrides( $product_id, $extra_overrides = [] )`
+is the single place that decides which rule applies to a product: if that
+product has `_snw_custom_rule_enabled` = `yes` (and is licensed), its own
+`_snw_custom_prefix` / `_snw_custom_suffix` / `_snw_custom_length` /
+`_snw_custom_charset` meta seed the overrides array; `$extra_overrides` is
+then layered on top for anything the caller explicitly supplies, so it wins
+over the product's stored rule for that one call. Both bulk-generate paths
+go through this: `Pro\CustomRules\Ajax` (the product tab's own "Bulk
+generate for this product" button, no extra overrides — just the product's
+rule or global) and `Pro\BulkGenerate\Controller` (each row's own
+prefix/suffix are passed as `$extra_overrides`, so an explicit row value
+still wins over that row's product's custom rule). Rule field values persist
+even while `_snw_custom_rule_enabled` is off, so re-checking it later
+doesn't lose what was typed — `is_enabled_for_product()` alone gates whether
+they take effect, same pattern as `StockSync`.
+
+The product tab's own "Bulk generate for this product" button always reads
+the product's *saved* meta at generate time, not whatever's currently typed
+into the rule fields — the tooltip says as much, so save the product first
+if the rule was just changed.
 
 ## Order assignment
 

@@ -107,8 +107,8 @@ final class Menu {
 
 		if ( 'bulk-generate' === $action ) {
 			if ( ! Licensing::is_pro_active() ) {
-				wp_safe_redirect( add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) ) );
-				exit;
+				$this->render_bulk_generate_teaser();
+				return;
 			}
 
 			$controller = new BulkGenerateController();
@@ -118,6 +118,20 @@ final class Menu {
 		}
 
 		$this->render_list();
+	}
+
+	private function render_bulk_generate_teaser(): void {
+		$back_url = add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) );
+		?>
+		<div class="wrap">
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'Bulk Generate Serial Numbers', 'serial-number-for-woocommerce' ); ?></h1>
+			<a href="<?php echo esc_url( $back_url ); ?>" class="page-title-action"><?php esc_html_e( 'Back to list', 'serial-number-for-woocommerce' ); ?></a>
+
+			<div class="notice notice-info" style="margin-top: 20px;">
+				<p><?php esc_html_e( 'Bulk Generate is a Pro feature. Upgrade to generate multiple serial numbers at once, across one or more products.', 'serial-number-for-woocommerce' ); ?></p>
+			</div>
+		</div>
+		<?php
 	}
 
 	private function render_list(): void {
@@ -145,6 +159,18 @@ final class Menu {
 			<a href="<?php echo esc_url( $add_new_url ); ?>" class="page-title-action"><?php esc_html_e( 'Add New', 'serial-number-for-woocommerce' ); ?></a>
 			<?php if ( Licensing::is_pro_active() ) : ?>
 				<a href="<?php echo esc_url( $bulk_generate_url ); ?>" class="page-title-action"><?php esc_html_e( 'Bulk Generate', 'serial-number-for-woocommerce' ); ?></a>
+			<?php else : ?>
+				<a
+					href="<?php echo esc_url( $bulk_generate_url ); ?>"
+					class="page-title-action"
+					style="opacity: 0.5;"
+					title="<?php esc_attr_e( 'Upgrade to Pro to unlock Bulk Generate', 'serial-number-for-woocommerce' ); ?>"
+				>
+					<?php esc_html_e( 'Bulk Generate', 'serial-number-for-woocommerce' ); ?>
+					<span style="background: #7f54b3; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">
+						<?php esc_html_e( 'PRO', 'serial-number-for-woocommerce' ); ?>
+					</span>
+				</a>
 			<?php endif; ?>
 
 			<?php if ( isset( $_GET['snw_notice'] ) && 'added' === $_GET['snw_notice'] ) : ?>
