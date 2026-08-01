@@ -1,7 +1,8 @@
 <?php
 namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
 
-use SerialNumberForWooCommerce\Products\StockSync;
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -39,7 +40,7 @@ final class Ajax {
 
 		$result = Repository::import_for_product( $product_id, $raw );
 
-		if ( $result['created'] ) {
+		if ( $result['created'] && Licensing::is_pro_active() ) {
 			StockSync::sync( $product_id );
 		}
 

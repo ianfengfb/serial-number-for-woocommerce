@@ -2,12 +2,16 @@
 namespace SerialNumberForWooCommerce\Admin\Products;
 
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
-use SerialNumberForWooCommerce\Products\StockSync;
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Free tier: adds a "Serial Number" tab to the product edit screen.
+ * Free tier: adds a "Serial Number" tab to the product edit screen. Once
+ * "Enable serial numbers" is checked, the tab splits into a Free Features
+ * area and a Pro Features area — the latter shown but disabled with a PRO
+ * badge when not licensed.
  */
 final class ProductTab {
 
@@ -36,6 +40,7 @@ final class ProductTab {
 
 	public function render_panel(): void {
 		global $post;
+		$is_pro = Licensing::is_pro_active();
 		?>
 		<div id="snw_product_data" class="panel woocommerce_options_panel">
 			<div class="options_group">
@@ -49,56 +54,85 @@ final class ProductTab {
 						'value'       => get_post_meta( $post->ID, self::META_KEY, true ),
 					)
 				);
-
-				woocommerce_wp_checkbox(
-					array(
-						'id'            => self::MANAGE_STOCK_META_KEY,
-						'label'         => __( 'Manage product stock with Serial Number', 'serial-number-for-woocommerce' ),
-						'description'   => __( "Keeps this product's stock quantity equal to the number of Available serial numbers in its pool. Saving with this on sets the stock to match right away, and keeps it in sync as serial numbers are added, generated, or assigned to orders.", 'serial-number-for-woocommerce' ),
-						'desc_tip'      => true,
-						'value'         => get_post_meta( $post->ID, self::MANAGE_STOCK_META_KEY, true ),
-						'wrapper_class' => 'snw_manage_stock_field',
-					)
-				);
-
-				woocommerce_wp_textarea_input(
-					array(
-						'id'            => self::BULK_ADD_FIELD,
-						'label'         => __( 'Add Serial Numbers', 'serial-number-for-woocommerce' ),
-						'description'   => __( 'One serial number per line. Click "Add to Pool" to create them now, connected to this product — or just save the product and any left here are created automatically.', 'serial-number-for-woocommerce' ),
-						'desc_tip'      => true,
-						'placeholder'   => "SN-0001\nSN-0002\nSN-0003",
-						'rows'          => 6,
-						'wrapper_class' => 'snw_bulk_serials_field',
-					)
-				);
 				?>
-				<p class="form-field snw_bulk_serials_field">
-					<label>&nbsp;</label>
-					<button type="button" id="snw-add-bulk-serials" class="button"><?php esc_html_e( 'Add to Pool', 'serial-number-for-woocommerce' ); ?></button>
-					<span id="snw-bulk-serials-result" style="margin-left: 8px;"></span>
-				</p>
+			</div>
+
+			<div id="snw-conditional-fields">
+				<h4><?php esc_html_e( 'Free Features', 'serial-number-for-woocommerce' ); ?></h4>
+				<div class="options_group">
+					<?php
+					woocommerce_wp_textarea_input(
+						array(
+							'id'          => self::BULK_ADD_FIELD,
+							'label'       => __( 'Add Serial Numbers', 'serial-number-for-woocommerce' ),
+							'description' => __( 'One serial number per line. Click "Add to Pool" to create them now, connected to this product — or just save the product and any left here are created automatically.', 'serial-number-for-woocommerce' ),
+							'desc_tip'    => true,
+							'placeholder' => "SN-0001\nSN-0002\nSN-0003",
+							'rows'        => 6,
+						)
+					);
+					?>
+					<p class="form-field">
+						<label>&nbsp;</label>
+						<button type="button" id="snw-add-bulk-serials" class="button"><?php esc_html_e( 'Add to Pool', 'serial-number-for-woocommerce' ); ?></button>
+						<span id="snw-bulk-serials-result" style="margin-left: 8px;"></span>
+					</p>
+				</div>
+
+				<h4>
+					<?php esc_html_e( 'Pro Features', 'serial-number-for-woocommerce' ); ?>
+					<?php if ( ! $is_pro ) : ?>
+						<span style="background: #7f54b3; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle;">
+							<?php esc_html_e( 'PRO', 'serial-number-for-woocommerce' ); ?>
+						</span>
+					<?php endif; ?>
+				</h4>
+				<div class="options_group">
+					<?php if ( $is_pro ) : ?>
+						<?php
+						woocommerce_wp_checkbox(
+							array(
+								'id'          => self::MANAGE_STOCK_META_KEY,
+								'label'       => __( 'Manage product stock with Serial Number', 'serial-number-for-woocommerce' ),
+								'description' => __( "Keeps this product's stock quantity equal to the number of Available serial numbers in its pool. Saving with this on sets the stock to match right away, and keeps it in sync as serial numbers are added, generated, or assigned to orders.", 'serial-number-for-woocommerce' ),
+								'desc_tip'    => true,
+								'value'       => get_post_meta( $post->ID, self::MANAGE_STOCK_META_KEY, true ),
+							)
+						);
+						?>
+					<?php else : ?>
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::MANAGE_STOCK_META_KEY ); ?>">
+								<?php esc_html_e( 'Manage product stock with Serial Number', 'serial-number-for-woocommerce' ); ?>
+							</label>
+							<input
+								type="checkbox"
+								id="<?php echo esc_attr( self::MANAGE_STOCK_META_KEY ); ?>"
+								disabled
+								<?php checked( get_post_meta( $post->ID, self::MANAGE_STOCK_META_KEY, true ), 'yes' ); ?>
+							/>
+							<?php echo wc_help_tip( __( "Upgrade to Pro to automatically keep this product's stock in sync with its Serial Number pool.", 'serial-number-for-woocommerce' ) ); ?>
+						</p>
+					<?php endif; ?>
+				</div>
 			</div>
 			<script>
 			( function ( $ ) {
-				var snwAjaxUrl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
-				var snwNonce   = <?php echo wp_json_encode( wp_create_nonce( 'snw_admin' ) ); ?>;
-				var snwProductId = <?php echo (int) $post->ID; ?>;
+				var snwAjaxUrl    = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+				var snwNonce      = <?php echo wp_json_encode( wp_create_nonce( 'snw_admin' ) ); ?>;
+				var snwProductId  = <?php echo (int) $post->ID; ?>;
+				var snwIsPro      = <?php echo wp_json_encode( $is_pro ); ?>;
 
 				function snwIsEnabled() {
 					return $( '#<?php echo esc_js( self::META_KEY ); ?>' ).is( ':checked' );
 				}
 
-				function snwToggleManageStockField() {
-					$( '.snw_manage_stock_field' ).toggle( snwIsEnabled() );
-				}
-
-				function snwToggleBulkSerialsField() {
-					$( '.snw_bulk_serials_field' ).toggle( snwIsEnabled() );
+				function snwToggleConditionalFields() {
+					$( '#snw-conditional-fields' ).toggle( snwIsEnabled() );
 				}
 
 				function snwToggleStockQuantityLock() {
-					var lockedBySN = snwIsEnabled() &&
+					var lockedBySN = snwIsPro && snwIsEnabled() &&
 						$( '#<?php echo esc_js( self::MANAGE_STOCK_META_KEY ); ?>' ).is( ':checked' );
 					var $stock  = $( '#_stock' );
 					var $notice = $( '#snw-stock-locked-notice' );
@@ -115,13 +149,11 @@ final class ProductTab {
 
 				$( '#<?php echo esc_js( self::META_KEY ); ?>, #<?php echo esc_js( self::MANAGE_STOCK_META_KEY ); ?>' )
 					.on( 'change', function () {
-						snwToggleManageStockField();
-						snwToggleBulkSerialsField();
+						snwToggleConditionalFields();
 						snwToggleStockQuantityLock();
 					} );
 
-				snwToggleManageStockField();
-				snwToggleBulkSerialsField();
+				snwToggleConditionalFields();
 				snwToggleStockQuantityLock();
 
 				$( '#snw-add-bulk-serials' ).on( 'click', function ( e ) {
@@ -171,9 +203,10 @@ final class ProductTab {
 		$enabled = isset( $_POST[ self::META_KEY ] ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::META_KEY, $enabled );
 
-		// The manage-stock checkbox is only meaningful while serial numbers
-		// are enabled, so a stale posted value from a hidden field can't stick.
-		$manage_stock = ( 'yes' === $enabled && isset( $_POST[ self::MANAGE_STOCK_META_KEY ] ) ) ? 'yes' : 'no';
+		// Pro-only: never persist "yes" without a license, even if the field
+		// were somehow submitted (it's rendered disabled when unlicensed, so
+		// browsers don't submit it, but this keeps the meta honest either way).
+		$manage_stock = ( 'yes' === $enabled && Licensing::is_pro_active() && isset( $_POST[ self::MANAGE_STOCK_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::MANAGE_STOCK_META_KEY, $manage_stock );
 
 		// Fallback for whatever's still in the bulk-add textarea at save time —
@@ -187,6 +220,8 @@ final class ProductTab {
 			}
 		}
 
-		StockSync::sync( $product_id );
+		if ( Licensing::is_pro_active() ) {
+			StockSync::sync( $product_id );
+		}
 	}
 }

@@ -34,6 +34,17 @@ on products/orders. Distributed as a free (Lite) tier plus a paid Pro tier.
   and that code path is unreachable without a license. The reverse direction
   (Pro code calling Free classes, e.g. `Repository`, `Generator`) is always
   fine and expected.
+- **Visible-but-disabled Pro teasers render from Free code, not Pro code.**
+  When a Pro feature is small enough to show as a greyed-out control next to
+  its related Free feature (rather than hiding it entirely, like the Bulk
+  Generate button does), the disabled markup + "PRO" badge has to be written
+  in the Free-tier file, because it must render even in the free zip where
+  `includes/Pro/` doesn't exist — a Pro class can't be instantiated to draw
+  its own teaser. `Admin\Products\ProductTab` is the example: it renders the
+  "Manage product stock with Serial Number" checkbox's teaser (unlicensed) or
+  hands off entirely to `Pro\StockSync\StockSync` for the real save/sync
+  logic (licensed) — either way, the actual Pro *behavior* stays gated and
+  out of Free code; only the inert preview markup lives there.
 
 ## Structure
 
@@ -46,7 +57,9 @@ includes/
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/bulk-generate routing)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
-  Admin/Products/ProductTab.php     Free tier: "Serial Number" tab on the product edit screen (enable + manage-stock checkboxes)
+  Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, split into a Free Features area and a Pro
+                                     Features area (see Free/Pro architecture rules above for why the Pro
+                                     checkbox's disabled/teaser markup lives here rather than under Pro/)
   Admin/SerialNumbers/
     Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
     ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
@@ -57,9 +70,8 @@ includes/
   Orders/
     Assigner.php                    Free tier: assigns serials to order line items when an order is placed
     ItemDisplay.php                 Free tier: shows an item's assigned serials on the admin order edit screen
-  Products/
-    StockSync.php                   Free tier: mirrors a product's Available pool count onto WC stock
   Pro/
+    StockSync/StockSync.php         Pro: mirrors a product's Available pool count onto WC stock
     BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
@@ -97,7 +109,8 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
 - Per-product opt-in is the `_snw_enabled` post meta (`yes`/`no`) on the parent
   product — `ProductTab::META_KEY`. `_snw_manage_stock`
   (`ProductTab::MANAGE_STOCK_META_KEY`) is a second, dependent per-product
-  meta — see Stock sync below.
+  meta, Pro-gated — `ProductTab::save()` never persists it as `yes` without a
+  license — see Stock sync below.
 - Serials handed to an order live on the line item, not the order: the
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
@@ -111,26 +124,29 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   `ProductTab::save()` for whatever's still in the field — safe to double up
   on the same input since duplicates are always skipped.
 
-## Stock sync
+## Stock sync (Pro)
 
-`Products\StockSync::sync( $product_id )` recomputes and writes a product's
-WooCommerce stock (`_manage_stock`, `_stock`, `_stock_status`) from
+`Pro\StockSync\StockSync::sync( $product_id )` recomputes and writes a
+product's WooCommerce stock (`_manage_stock`, `_stock`, `_stock_status`) from
 `Repository::count_available()` — the product's Available, unexpired serial
-count. It no-ops unless *both* `_snw_enabled` and `_snw_manage_stock` are
-`yes`, so it's always safe to call after anything that might change a
-product's pool: `ProductTab::save()`, `FormController::save()` (syncing the
-old product too if a serial's product changed), `Pro\BulkGenerate\Controller`
-(once per row), and `Assigner::assign_for_order()` (once per product that had
-a successful pool claim — `generate_assigned()`'s fallback path never touches
-the pool, so it never needs a sync). Any future code path that changes which
-serials are Available for a product must call `StockSync::sync()` too.
+count. It no-ops unless licensed and *both* `_snw_enabled` and
+`_snw_manage_stock` are `yes`, so every Free-tier call site wraps it in its
+own `Licensing::is_pro_active()` check before calling (required regardless,
+since the class doesn't exist at all in the free zip): `ProductTab::save()`,
+`FormController::save()` (syncing the old product too if a serial's product
+changed), and `Assigner::assign_for_order()` (once per product that had a
+successful pool claim — `generate_assigned()`'s fallback path never touches
+the pool, so it never needs a sync). `Pro\BulkGenerate\Controller` calls it
+unguarded since that whole class only ever runs when licensed already. Any
+future code path that changes which serials are Available for a product must
+call `StockSync::sync()` too, gated the same way.
 
 `StockSync::sync()` always wins over a manual edit — it unconditionally
 overwrites `_stock` on every call, with no check for whether a human just set
 it. `ProductTab`'s inline script reflects that in the UI: while both
-checkboxes are on, WooCommerce's native stock quantity field (`#_stock`, on
-the Inventory tab) is disabled with a short note explaining why, toggled
-live as either checkbox changes.
+checkboxes are on (and licensed), WooCommerce's native stock quantity field
+(`#_stock`, on the Inventory tab) is disabled with a short note explaining
+why, toggled live as either checkbox changes.
 
 ## Order assignment
 
