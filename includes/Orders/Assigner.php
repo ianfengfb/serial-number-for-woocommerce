@@ -5,7 +5,8 @@ use SerialNumberForWooCommerce\Admin\Products\ProductTab;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Generator;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
-use SerialNumberForWooCommerce\Products\StockSync;
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -112,8 +113,10 @@ final class Assigner {
 
 		// Only claiming from the pool changes a product's Available count —
 		// generate_assigned() never touches it, so it's excluded here.
-		foreach ( array_keys( $claimed_products ) as $product_id ) {
-			StockSync::sync( $product_id );
+		if ( Licensing::is_pro_active() ) {
+			foreach ( array_keys( $claimed_products ) as $product_id ) {
+				StockSync::sync( $product_id );
+			}
 		}
 
 		return $assigned;

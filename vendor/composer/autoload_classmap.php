@@ -22,5 +22,5 @@ return array(
     'SerialNumberForWooCommerce\\Orders\\ItemDisplay' => $baseDir . '/includes/Orders/ItemDisplay.php',
     'SerialNumberForWooCommerce\\Plugin' => $baseDir . '/includes/Plugin.php',
     'SerialNumberForWooCommerce\\Pro\\BulkGenerate\\Controller' => $baseDir . '/includes/Pro/BulkGenerate/Controller.php',
-    'SerialNumberForWooCommerce\\Products\\StockSync' => $baseDir . '/includes/Products/StockSync.php',
+    'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => $baseDir . '/includes/Pro/StockSync/StockSync.php',
 );

@@ -1,7 +1,8 @@
 <?php
 namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
 
-use SerialNumberForWooCommerce\Products\StockSync;
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -86,7 +87,7 @@ final class FormController {
 			Repository::update( $this->id, $data );
 			$notice = 'updated';
 
-			if ( $previous_product_id && $previous_product_id !== $product_id ) {
+			if ( Licensing::is_pro_active() && $previous_product_id && $previous_product_id !== $product_id ) {
 				StockSync::sync( $previous_product_id );
 			}
 		} else {
@@ -94,7 +95,7 @@ final class FormController {
 			$notice = 'added';
 		}
 
-		if ( $product_id ) {
+		if ( Licensing::is_pro_active() && $product_id ) {
 			StockSync::sync( $product_id );
 		}
 

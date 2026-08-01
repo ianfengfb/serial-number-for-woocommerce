@@ -1,14 +1,15 @@
 <?php
-namespace SerialNumberForWooCommerce\Products;
+namespace SerialNumberForWooCommerce\Pro\StockSync;
 
 use SerialNumberForWooCommerce\Admin\Products\ProductTab;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
+use SerialNumberForWooCommerce\Licensing;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Free tier: keeps a product's WooCommerce stock quantity equal to the count
- * of Available serial numbers in its pool, when "Manage product stock with
+ * Pro: keeps a product's WooCommerce stock quantity equal to the count of
+ * Available serial numbers in its pool, when "Manage product stock with
  * Serial Number" is switched on for that product (Serial Number tab).
  */
 final class StockSync {
@@ -21,10 +22,11 @@ final class StockSync {
 	/**
 	 * Recomputes and writes the product's stock from its Available pool count.
 	 * Safe to call unconditionally from anywhere the pool count may have
-	 * changed — it no-ops unless stock-by-serial-number is switched on.
+	 * changed — it no-ops unless licensed and stock-by-serial-number is
+	 * switched on for the product.
 	 */
 	public static function sync( int $product_id ): void {
-		if ( ! self::is_enabled_for_product( $product_id ) ) {
+		if ( ! Licensing::is_pro_active() || ! self::is_enabled_for_product( $product_id ) ) {
 			return;
 		}
 

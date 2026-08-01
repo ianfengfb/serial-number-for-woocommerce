@@ -37,7 +37,7 @@ class ComposerStaticInit71078b64631c62ac7ba6e3702d200d7c
         'SerialNumberForWooCommerce\\Orders\\ItemDisplay' => __DIR__ . '/../..' . '/includes/Orders/ItemDisplay.php',
         'SerialNumberForWooCommerce\\Plugin' => __DIR__ . '/../..' . '/includes/Plugin.php',
         'SerialNumberForWooCommerce\\Pro\\BulkGenerate\\Controller' => __DIR__ . '/../..' . '/includes/Pro/BulkGenerate/Controller.php',
-        'SerialNumberForWooCommerce\\Products\\StockSync' => __DIR__ . '/../..' . '/includes/Products/StockSync.php',
+        'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => __DIR__ . '/../..' . '/includes/Pro/StockSync/StockSync.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
