@@ -53,7 +53,7 @@ includes/
     FormController.php              Add New / Edit form render + validation + save
     Status.php                      Serial number lifecycle statuses: values, labels, configured default
     Generator.php                   Builds a random serial from the configured (or per-call override) rules
-    Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial
+    Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial / snw_import_serials
   Orders/
     Assigner.php                    Free tier: assigns serials to order line items when an order is placed
     ItemDisplay.php                 Free tier: shows an item's assigned serials on the admin order edit screen
@@ -102,6 +102,14 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
   read it via `Assigner::serial_ids()` before assigning anything new.
+- `Repository::import_for_product()` is the single place that turns a block of
+  pasted text into rows tied to a product — one per non-empty line, status
+  `Status::configured_default()`, duplicates (existing or repeated in the same
+  paste) skipped rather than erroring. The Serial Number tab's bulk-add
+  textarea uses it twice: immediately via the `snw_import_serials` AJAX
+  action ("Add to Pool"), and again as a save-time fallback in
+  `ProductTab::save()` for whatever's still in the field — safe to double up
+  on the same input since duplicates are always skipped.
 
 ## Stock sync
 

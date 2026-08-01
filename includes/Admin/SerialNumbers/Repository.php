@@ -171,6 +171,62 @@ final class Repository {
 		);
 	}
 
+	/**
+	 * Creates one row per non-empty line of $raw_text, all tied to
+	 * $product_id — used by both the Serial Number tab's "Add to Pool" AJAX
+	 * button and its save-time fallback for whatever's left in the textarea,
+	 * so pasted serials are never lost whether or not that button is used.
+	 *
+	 * Duplicates (against existing rows, or repeated within the same paste)
+	 * are skipped rather than erroring, so calling this twice on the same
+	 * input — e.g. AJAX already created some, then the product is saved with
+	 * those same lines still in the field — is always safe.
+	 *
+	 * @return array{created: int, skipped: string[]}
+	 */
+	public static function import_for_product( int $product_id, string $raw_text ): array {
+		$lines   = preg_split( '/\r\n|\r|\n/', $raw_text );
+		$seen    = array();
+		$created = 0;
+		$skipped = array();
+
+		foreach ( $lines as $line ) {
+			$serial_number = sanitize_text_field( trim( (string) $line ) );
+
+			if ( '' === $serial_number ) {
+				continue;
+			}
+
+			if ( isset( $seen[ $serial_number ] ) || self::exists( $serial_number ) ) {
+				$skipped[] = $serial_number;
+				continue;
+			}
+
+			$seen[ $serial_number ] = true;
+
+			$inserted = self::insert(
+				array(
+					'serial_number' => $serial_number,
+					'status'        => Status::configured_default(),
+					'product_id'    => $product_id,
+					'order_id'      => 0,
+					'expires_at'    => '',
+				)
+			);
+
+			if ( $inserted ) {
+				++$created;
+			} else {
+				$skipped[] = $serial_number;
+			}
+		}
+
+		return array(
+			'created' => $created,
+			'skipped' => $skipped,
+		);
+	}
+
 	public static function search( string $search, int $per_page, int $page ): array {
 		global $wpdb;
 
