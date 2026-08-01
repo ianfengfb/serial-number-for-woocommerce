@@ -22,5 +22,7 @@ return array(
     'SerialNumberForWooCommerce\\Orders\\ItemDisplay' => $baseDir . '/includes/Orders/ItemDisplay.php',
     'SerialNumberForWooCommerce\\Plugin' => $baseDir . '/includes/Plugin.php',
     'SerialNumberForWooCommerce\\Pro\\BulkGenerate\\Controller' => $baseDir . '/includes/Pro/BulkGenerate/Controller.php',
+    'SerialNumberForWooCommerce\\Pro\\CustomRules\\Ajax' => $baseDir . '/includes/Pro/CustomRules/Ajax.php',
+    'SerialNumberForWooCommerce\\Pro\\CustomRules\\CustomRules' => $baseDir . '/includes/Pro/CustomRules/CustomRules.php',
     'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => $baseDir . '/includes/Pro/StockSync/StockSync.php',
 );

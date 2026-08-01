@@ -26,6 +26,10 @@ final class Plugin {
 		new Orders\Assigner();
 		new Orders\ItemDisplay();
 
+		if ( Licensing::is_pro_active() ) {
+			new Pro\CustomRules\Ajax();
+		}
+
 		add_filter(
 			'woocommerce_get_settings_pages',
 			function ( array $pages ): array {

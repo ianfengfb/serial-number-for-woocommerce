@@ -5,6 +5,7 @@ use SerialNumberForWooCommerce\Admin\SerialNumbers\Generator;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
 use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\CustomRules\CustomRules;
 use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
@@ -49,10 +50,18 @@ final class Controller {
 		$total          = 0;
 
 		foreach ( $rows as $row ) {
+			$overrides = CustomRules::resolve_overrides(
+				$row['product_id'],
+				array(
+					'prefix' => $row['prefix'],
+					'suffix' => $row['suffix'],
+				)
+			);
+
 			for ( $i = 0; $i < $row['amount']; $i++ ) {
 				Repository::insert(
 					array(
-						'serial_number' => Generator::generate( $row['prefix'], $row['suffix'] ),
+						'serial_number' => Generator::generate( $overrides ),
 						'status'        => $default_status,
 						'product_id'    => $row['product_id'],
 						'order_id'      => 0,
@@ -151,7 +160,7 @@ final class Controller {
 				</div>
 			<?php endif; ?>
 
-			<p><?php esc_html_e( 'Leave Prefix/Suffix blank on a row to use the global rules from WooCommerce > Settings > Serial Numbers.', 'serial-number-for-woocommerce' ); ?></p>
+			<p><?php esc_html_e( 'Leave Prefix/Suffix blank on a row to use that product\'s own custom rule if it has one enabled, otherwise the global rules from WooCommerce > Settings > Serial Numbers.', 'serial-number-for-woocommerce' ); ?></p>
 
 			<form method="post" id="snw-bulk-generate-form">
 				<?php wp_nonce_field( 'snw_bulk_generate_serial_numbers' ); ?>

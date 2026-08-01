@@ -9,8 +9,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Free tier: adds a "Serial Number" tab to the product edit screen. Once
- * "Enable serial numbers" is checked, the tab splits into a Free Features
- * area and a Pro Features area — the latter shown but disabled with a PRO
+ * "Enable serial numbers" is checked, an unlabeled free-features area and a
+ * "Pro Features" area appear — the latter shown but disabled with a PRO
  * badge when not licensed.
  */
 final class ProductTab {
@@ -20,6 +20,16 @@ final class ProductTab {
 	const MANAGE_STOCK_META_KEY = '_snw_manage_stock';
 
 	const BULK_ADD_FIELD = 'snw_bulk_serials';
+
+	const CUSTOM_RULE_ENABLED_META_KEY = '_snw_custom_rule_enabled';
+
+	const CUSTOM_PREFIX_META_KEY = '_snw_custom_prefix';
+
+	const CUSTOM_SUFFIX_META_KEY = '_snw_custom_suffix';
+
+	const CUSTOM_LENGTH_META_KEY = '_snw_custom_length';
+
+	const CUSTOM_CHARSET_META_KEY = '_snw_custom_charset';
 
 	public function __construct() {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'add_tab' ) );
@@ -58,7 +68,6 @@ final class ProductTab {
 			</div>
 
 			<div id="snw-conditional-fields">
-				<h4><?php esc_html_e( 'Free Features', 'serial-number-for-woocommerce' ); ?></h4>
 				<div class="options_group">
 					<?php
 					woocommerce_wp_textarea_input(
@@ -114,6 +123,105 @@ final class ProductTab {
 							<?php echo wc_help_tip( __( "Upgrade to Pro to automatically keep this product's stock in sync with its Serial Number pool.", 'serial-number-for-woocommerce' ) ); ?>
 						</p>
 					<?php endif; ?>
+
+					<?php if ( $is_pro ) : ?>
+						<?php
+						woocommerce_wp_checkbox(
+							array(
+								'id'          => self::CUSTOM_RULE_ENABLED_META_KEY,
+								'label'       => __( 'Use a custom auto-generation rule for this product', 'serial-number-for-woocommerce' ),
+								'description' => __( 'Overrides the global prefix/suffix/character-set/length rule from WooCommerce > Settings > Serial Numbers for this product only.', 'serial-number-for-woocommerce' ),
+								'desc_tip'    => true,
+								'value'       => get_post_meta( $post->ID, self::CUSTOM_RULE_ENABLED_META_KEY, true ),
+							)
+						);
+						?>
+					<?php else : ?>
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>">
+								<?php esc_html_e( 'Use a custom auto-generation rule for this product', 'serial-number-for-woocommerce' ); ?>
+							</label>
+							<input
+								type="checkbox"
+								id="<?php echo esc_attr( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>"
+								disabled
+								<?php checked( get_post_meta( $post->ID, self::CUSTOM_RULE_ENABLED_META_KEY, true ), 'yes' ); ?>
+							/>
+							<?php echo wc_help_tip( __( 'Upgrade to Pro to set a custom prefix/suffix/character-set/length rule for this product only.', 'serial-number-for-woocommerce' ) ); ?>
+						</p>
+					<?php endif; ?>
+
+					<div id="snw-custom-rule-fields">
+						<?php
+						$this->rule_text_field(
+							self::CUSTOM_PREFIX_META_KEY,
+							__( 'Prefix', 'serial-number-for-woocommerce' ),
+							__( 'Leave blank to use the global prefix.', 'serial-number-for-woocommerce' ),
+							get_post_meta( $post->ID, self::CUSTOM_PREFIX_META_KEY, true ),
+							$is_pro
+						);
+
+						$this->rule_text_field(
+							self::CUSTOM_SUFFIX_META_KEY,
+							__( 'Suffix', 'serial-number-for-woocommerce' ),
+							__( 'Leave blank to use the global suffix.', 'serial-number-for-woocommerce' ),
+							get_post_meta( $post->ID, self::CUSTOM_SUFFIX_META_KEY, true ),
+							$is_pro
+						);
+
+						woocommerce_wp_select(
+							array(
+								'id'                => self::CUSTOM_CHARSET_META_KEY,
+								'label'             => __( 'Character set', 'serial-number-for-woocommerce' ),
+								'description'       => __( 'Leave as "Use global setting" to use the global character set.', 'serial-number-for-woocommerce' ),
+								'desc_tip'          => true,
+								'value'             => get_post_meta( $post->ID, self::CUSTOM_CHARSET_META_KEY, true ),
+								'options'           => array(
+									''             => __( 'Use global setting', 'serial-number-for-woocommerce' ),
+									'alphanumeric' => __( 'Letters and numbers', 'serial-number-for-woocommerce' ),
+									'numeric'      => __( 'Numbers only', 'serial-number-for-woocommerce' ),
+									'alpha'        => __( 'Letters only', 'serial-number-for-woocommerce' ),
+								),
+								'custom_attributes' => $is_pro ? array() : array( 'disabled' => 'disabled' ),
+							)
+						);
+
+						woocommerce_wp_text_input(
+							array(
+								'id'                => self::CUSTOM_LENGTH_META_KEY,
+								'label'             => __( 'Random part length', 'serial-number-for-woocommerce' ),
+								'description'       => __( 'Leave blank to use the global length.', 'serial-number-for-woocommerce' ),
+								'desc_tip'          => true,
+								'type'              => 'number',
+								'value'             => get_post_meta( $post->ID, self::CUSTOM_LENGTH_META_KEY, true ),
+								'custom_attributes' => array_merge(
+									array(
+										'min'  => 1,
+										'max'  => 64,
+										'step' => 1,
+									),
+									$is_pro ? array() : array( 'disabled' => 'disabled' )
+								),
+							)
+						);
+						?>
+					</div>
+
+					<p class="form-field">
+						<label for="snw-bulk-generate-amount"><?php esc_html_e( 'Bulk generate for this product', 'serial-number-for-woocommerce' ); ?></label>
+						<input
+							type="number"
+							id="snw-bulk-generate-amount"
+							min="1"
+							max="500"
+							value="1"
+							class="small-text"
+							<?php disabled( ! $is_pro ); ?>
+						/>
+						<button type="button" id="snw-bulk-generate-product" class="button" <?php disabled( ! $is_pro ); ?>><?php esc_html_e( 'Generate', 'serial-number-for-woocommerce' ); ?></button>
+						<span id="snw-bulk-generate-product-result" style="margin-left: 8px;"></span>
+						<?php echo wc_help_tip( __( 'Generates this many serial numbers now, connected to this product, using the rule above (or the global rule if not overridden). Uses the saved rule — save the product first if you just changed it.', 'serial-number-for-woocommerce' ) ); ?>
+					</p>
 				</div>
 			</div>
 			<script>
@@ -129,6 +237,12 @@ final class ProductTab {
 
 				function snwToggleConditionalFields() {
 					$( '#snw-conditional-fields' ).toggle( snwIsEnabled() );
+				}
+
+				function snwToggleCustomRuleFields() {
+					$( '#snw-custom-rule-fields' ).toggle(
+						snwIsPro && $( '#<?php echo esc_js( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>' ).is( ':checked' )
+					);
 				}
 
 				function snwToggleStockQuantityLock() {
@@ -153,7 +267,10 @@ final class ProductTab {
 						snwToggleStockQuantityLock();
 					} );
 
+				$( '#<?php echo esc_js( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleCustomRuleFields );
+
 				snwToggleConditionalFields();
+				snwToggleCustomRuleFields();
 				snwToggleStockQuantityLock();
 
 				$( '#snw-add-bulk-serials' ).on( 'click', function ( e ) {
@@ -193,21 +310,107 @@ final class ProductTab {
 							$button.prop( 'disabled', false );
 						} );
 				} );
+
+				$( '#snw-bulk-generate-product' ).on( 'click', function ( e ) {
+					e.preventDefault();
+
+					var $button = $( this );
+					var $amount = $( '#snw-bulk-generate-amount' );
+					var $result = $( '#snw-bulk-generate-product-result' );
+
+					var amount = parseInt( $amount.val(), 10 );
+
+					if ( ! amount || amount < 1 ) {
+						return;
+					}
+
+					$button.prop( 'disabled', true );
+					$result.text( <?php echo wp_json_encode( __( 'Generating…', 'serial-number-for-woocommerce' ) ); ?> );
+
+					$.post( snwAjaxUrl, {
+						action: 'snw_bulk_generate_for_product',
+						nonce: snwNonce,
+						product_id: snwProductId,
+						amount: amount,
+					} )
+						.done( function ( response ) {
+							if ( ! response || ! response.success ) {
+								$result.text(
+									( response && response.data && response.data.message ) ||
+									<?php echo wp_json_encode( __( 'Something went wrong.', 'serial-number-for-woocommerce' ) ); ?>
+								);
+								return;
+							}
+
+							$result.text( response.data.message );
+						} )
+						.fail( function () {
+							$result.text( <?php echo wp_json_encode( __( 'Something went wrong.', 'serial-number-for-woocommerce' ) ); ?> );
+						} )
+						.always( function () {
+							$button.prop( 'disabled', false );
+						} );
+				} );
 			} )( jQuery );
 			</script>
 		</div>
 		<?php
 	}
 
+	/**
+	 * Renders a text field for the custom-rule fields row (prefix/suffix),
+	 * disabled when not licensed but always shown, matching the Pro area's
+	 * "visible but greyed out" teaser convention.
+	 */
+	private function rule_text_field( string $id, string $label, string $description, string $value, bool $is_pro ): void {
+		woocommerce_wp_text_input(
+			array(
+				'id'                => $id,
+				'label'             => $label,
+				'description'       => $description,
+				'desc_tip'          => true,
+				'value'             => $value,
+				'custom_attributes' => $is_pro ? array() : array( 'disabled' => 'disabled' ),
+			)
+		);
+	}
+
 	public function save( int $product_id ): void {
 		$enabled = isset( $_POST[ self::META_KEY ] ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::META_KEY, $enabled );
 
+		$is_pro = Licensing::is_pro_active();
+
 		// Pro-only: never persist "yes" without a license, even if the field
 		// were somehow submitted (it's rendered disabled when unlicensed, so
 		// browsers don't submit it, but this keeps the meta honest either way).
-		$manage_stock = ( 'yes' === $enabled && Licensing::is_pro_active() && isset( $_POST[ self::MANAGE_STOCK_META_KEY ] ) ) ? 'yes' : 'no';
+		$manage_stock = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::MANAGE_STOCK_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::MANAGE_STOCK_META_KEY, $manage_stock );
+
+		$custom_rule_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::CUSTOM_RULE_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
+		update_post_meta( $product_id, self::CUSTOM_RULE_ENABLED_META_KEY, $custom_rule_enabled );
+
+		// The rule field values themselves are kept even while the checkbox is
+		// off, so re-enabling it later doesn't lose what was typed in — only
+		// CustomRules::is_enabled_for_product() gates whether they take effect.
+		if ( $is_pro ) {
+			update_post_meta(
+				$product_id,
+				self::CUSTOM_PREFIX_META_KEY,
+				isset( $_POST[ self::CUSTOM_PREFIX_META_KEY ] ) ? sanitize_text_field( wp_unslash( $_POST[ self::CUSTOM_PREFIX_META_KEY ] ) ) : ''
+			);
+			update_post_meta(
+				$product_id,
+				self::CUSTOM_SUFFIX_META_KEY,
+				isset( $_POST[ self::CUSTOM_SUFFIX_META_KEY ] ) ? sanitize_text_field( wp_unslash( $_POST[ self::CUSTOM_SUFFIX_META_KEY ] ) ) : ''
+			);
+
+			$length = isset( $_POST[ self::CUSTOM_LENGTH_META_KEY ] ) ? absint( $_POST[ self::CUSTOM_LENGTH_META_KEY ] ) : 0;
+			update_post_meta( $product_id, self::CUSTOM_LENGTH_META_KEY, $length ? (string) max( 1, min( 64, $length ) ) : '' );
+
+			$charset = isset( $_POST[ self::CUSTOM_CHARSET_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::CUSTOM_CHARSET_META_KEY ] ) ) : '';
+			update_post_meta( $product_id, self::CUSTOM_CHARSET_META_KEY, in_array( $charset, array( 'alphanumeric', 'numeric', 'alpha' ), true ) ? $charset : '' );
+		}
 
 		// Fallback for whatever's still in the bulk-add textarea at save time —
 		// covers both "didn't click Add to Pool" and "AJAX unavailable". Safe to
@@ -220,7 +423,7 @@ final class ProductTab {
 			}
 		}
 
-		if ( Licensing::is_pro_active() ) {
+		if ( $is_pro ) {
 			StockSync::sync( $product_id );
 		}
 	}

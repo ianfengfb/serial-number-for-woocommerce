@@ -30,19 +30,20 @@ final class Generator {
 	/**
 	 * Generate a unique serial number using the configured rules.
 	 *
-	 * $prefix_override / $suffix_override let a caller (e.g. Pro bulk generate)
-	 * supply a per-row prefix/suffix; when left null or empty, the global rule
-	 * from WooCommerce > Settings > Serial Numbers is used instead.
+	 * $overrides lets a caller (e.g. a product's own custom rule, or a Pro
+	 * bulk-generate row) supply any of 'prefix', 'suffix', 'length', 'charset';
+	 * any left unset or empty falls back to the global rule from WooCommerce >
+	 * Settings > Serial Numbers.
 	 *
 	 * Falls back to the last candidate if every attempt collides (astronomically
 	 * unlikely); the Add New form's save-time uniqueness check is the backstop.
 	 */
-	public static function generate( ?string $prefix_override = null, ?string $suffix_override = null ): string {
-		$prefix  = ! empty( $prefix_override ) ? $prefix_override : (string) get_option( 'snw_auto_prefix', '' );
-		$postfix = ! empty( $suffix_override ) ? $suffix_override : (string) get_option( 'snw_auto_postfix', '' );
-		$length  = (int) get_option( 'snw_auto_length', 12 );
+	public static function generate( array $overrides = array() ): string {
+		$prefix  = ! empty( $overrides['prefix'] ) ? (string) $overrides['prefix'] : (string) get_option( 'snw_auto_prefix', '' );
+		$postfix = ! empty( $overrides['suffix'] ) ? (string) $overrides['suffix'] : (string) get_option( 'snw_auto_postfix', '' );
+		$length  = ! empty( $overrides['length'] ) ? (int) $overrides['length'] : (int) get_option( 'snw_auto_length', 12 );
 		$length  = max( 1, min( 64, $length ) );
-		$charset = self::charset_for( (string) get_option( 'snw_auto_charset', 'alphanumeric' ) );
+		$charset = self::charset_for( ! empty( $overrides['charset'] ) ? (string) $overrides['charset'] : (string) get_option( 'snw_auto_charset', 'alphanumeric' ) );
 
 		$serial = '';
 		for ( $attempt = 0; $attempt < self::MAX_ATTEMPTS; $attempt++ ) {
