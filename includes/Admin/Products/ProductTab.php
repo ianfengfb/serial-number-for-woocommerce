@@ -57,23 +57,13 @@ final class ProductTab {
 		<style>
 			/* Matched by the tab's href (always #snw_product_data, our own target)
 			   rather than a guessed WooCommerce-generated class name, so this
-			   doesn't depend on WC's internal tab-class naming convention. */
+			   doesn't depend on WC's internal tab-class naming convention.
+			   Uses the same "WooCommerce" icon font as the built-in tabs
+			   (general/inventory/shipping/etc.) — \e028 isn't used by any of
+			   those, so it reads as a distinct tab rather than a duplicate. */
 			#woocommerce-product-data ul.wc-tabs li a[href="#snw_product_data"]::before {
 				font-family: 'WooCommerce' !important;
-				content: '' !important;
-				display: inline-block;
-				width: 16px;
-				height: 16px;
-				vertical-align: text-bottom;
-				background-color: currentColor;
-				-webkit-mask-image: url("<?php echo self::tab_icon_data_uri(); ?>");
-				mask-image: url("<?php echo self::tab_icon_data_uri(); ?>");
-				-webkit-mask-repeat: no-repeat;
-				mask-repeat: no-repeat;
-				-webkit-mask-position: center;
-				mask-position: center;
-				-webkit-mask-size: 16px 16px;
-				mask-size: 16px 16px;
+				content: '\e028' !important;
 			}
 		</style>
 		<div id="snw_product_data" class="panel woocommerce_options_panel">
@@ -231,6 +221,22 @@ final class ProductTab {
 						?>
 					</div>
 
+					<p class="form-field">
+						<label for="snw-bulk-generate-amount"><?php esc_html_e( 'Bulk generate this amount of serial numbers', 'serial-number-for-woocommerce' ); ?></label>
+						<input
+							type="number"
+							id="snw-bulk-generate-amount"
+							min="1"
+							max="500"
+							value="1"
+							class="small-text"
+							<?php disabled( ! $is_pro ); ?>
+						/>
+						<button type="button" id="snw-bulk-generate-product" class="button" <?php disabled( ! $is_pro ); ?>><?php esc_html_e( 'Generate', 'serial-number-for-woocommerce' ); ?></button>
+						<span id="snw-bulk-generate-product-result" style="margin-left: 8px;"></span>
+						<?php echo wc_help_tip( __( 'Generates this many serial numbers now, connected to this product, using the rule above (or the global rule if not overridden). Uses the saved rule — save the product first if you just changed it.', 'serial-number-for-woocommerce' ) ); ?>
+					</p>
+
 					<?php if ( $is_pro ) : ?>
 						<?php
 						woocommerce_wp_checkbox(
@@ -257,22 +263,6 @@ final class ProductTab {
 							<?php echo wc_help_tip( __( 'Upgrade to Pro to track a warranty against each serial number assigned for this product.', 'serial-number-for-woocommerce' ) ); ?>
 						</p>
 					<?php endif; ?>
-
-					<p class="form-field">
-						<label for="snw-bulk-generate-amount"><?php esc_html_e( 'Bulk generate this amount of serial numbers', 'serial-number-for-woocommerce' ); ?></label>
-						<input
-							type="number"
-							id="snw-bulk-generate-amount"
-							min="1"
-							max="500"
-							value="1"
-							class="small-text"
-							<?php disabled( ! $is_pro ); ?>
-						/>
-						<button type="button" id="snw-bulk-generate-product" class="button" <?php disabled( ! $is_pro ); ?>><?php esc_html_e( 'Generate', 'serial-number-for-woocommerce' ); ?></button>
-						<span id="snw-bulk-generate-product-result" style="margin-left: 8px;"></span>
-						<?php echo wc_help_tip( __( 'Generates this many serial numbers now, connected to this product, using the rule above (or the global rule if not overridden). Uses the saved rule — save the product first if you just changed it.', 'serial-number-for-woocommerce' ) ); ?>
-					</p>
 				</div>
 			</div>
 			<script>
@@ -406,26 +396,6 @@ final class ProductTab {
 			</script>
 		</div>
 		<?php
-	}
-
-	/**
-	 * A small barcode icon for the Serial Number tab, as a mask-image data URI
-	 * rather than a WooCommerce/dashicons font glyph — avoids depending on a
-	 * specific icon font having a matching character at a guessed codepoint,
-	 * and `background-color: currentColor` still lets it recolor with the tab
-	 * exactly like WooCommerce's own font-icon tabs do.
-	 */
-	private static function tab_icon_data_uri(): string {
-		$svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
-			. '<rect x="2" y="4" width="2" height="16"/>'
-			. '<rect x="6" y="4" width="1" height="16"/>'
-			. '<rect x="9" y="4" width="3" height="16"/>'
-			. '<rect x="14" y="4" width="1" height="16"/>'
-			. '<rect x="17" y="4" width="2" height="16"/>'
-			. '<rect x="21" y="4" width="1" height="16"/>'
-			. '</svg>';
-
-		return 'data:image/svg+xml,' . rawurlencode( $svg );
 	}
 
 	/**
