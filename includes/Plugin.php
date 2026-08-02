@@ -25,6 +25,7 @@ final class Plugin {
 		new Admin\Products\ProductTab();
 		new Orders\Assigner();
 		new Orders\ItemDisplay();
+		new Orders\Ajax();
 
 		if ( Licensing::is_pro_active() ) {
 			new Pro\CustomRules\Ajax();

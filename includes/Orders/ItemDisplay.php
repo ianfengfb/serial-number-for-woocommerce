@@ -11,6 +11,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ItemDisplay {
 
+	private bool $printed_styles = false;
+
 	public function __construct() {
 		add_action( 'woocommerce_after_order_itemmeta', array( $this, 'render' ), 10, 2 );
 	}
@@ -24,12 +26,7 @@ final class ItemDisplay {
 			return;
 		}
 
-		$serial_ids = Assigner::serial_ids( $item );
-
-		if ( empty( $serial_ids ) ) {
-			return;
-		}
-
+		$serial_ids     = Assigner::serial_ids( $item );
 		$serial_numbers = array();
 
 		foreach ( $serial_ids as $serial_id ) {
@@ -40,14 +37,42 @@ final class ItemDisplay {
 			}
 		}
 
-		if ( empty( $serial_numbers ) ) {
-			return;
+		if ( ! empty( $serial_numbers ) ) {
+			?>
+			<div class="snw-order-item-serials">
+				<strong><?php esc_html_e( 'Serial Numbers', 'serial-number-for-woocommerce' ); ?>:</strong>
+				<?php echo esc_html( implode( ', ', $serial_numbers ) ); ?>
+			</div>
+			<?php
 		}
+
+		/*
+		 * Always offered, not just when auto-assignment fell short — this is a
+		 * manual override for orders whose item never got assigned in the
+		 * first place (e.g. the product wasn't Serial Number-enabled yet at
+		 * checkout), and Assigner::add_manual_serial() decides row by row
+		 * whether a typed value creates, attaches to, or is rejected for this
+		 * item.
+		 */
 		?>
-		<div class="snw-order-item-serials">
-			<strong><?php esc_html_e( 'Serial Numbers', 'serial-number-for-woocommerce' ); ?>:</strong>
-			<?php echo esc_html( implode( ', ', $serial_numbers ) ); ?>
+		<div class="snw-order-item-add-serial" style="margin-top: 6px;">
+			<input type="text" class="snw-add-serial-input" placeholder="<?php esc_attr_e( 'Add serial number&hellip;', 'serial-number-for-woocommerce' ); ?>" style="width: 160px;" />
+			<button
+				type="button"
+				class="button snw-add-serial-btn"
+				data-item-id="<?php echo esc_attr( $item_id ); ?>"
+				data-order-id="<?php echo esc_attr( $item->get_order_id() ); ?>"
+			><?php esc_html_e( 'Add Serial Number', 'serial-number-for-woocommerce' ); ?></button>
+			<span class="snw-add-serial-result" style="margin-left: 6px;"></span>
 		</div>
 		<?php
+		if ( ! $this->printed_styles ) {
+			$this->printed_styles = true;
+			?>
+			<style>
+				.snw-add-serial-result.snw-add-serial-error { color: #b32d2e; }
+			</style>
+			<?php
+		}
 	}
 }
