@@ -62,7 +62,8 @@ includes/
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/delete/
                                      bulk-generate/import routing; list view has a by-product / no-product filter)
-  Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
+  Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen
+                                     rules, customer-visibility toggles for emails/account order view)
   Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, unlabeled Free area plus a "Pro Features"
                                      area (see Free/Pro architecture rules above for why the Pro controls'
                                      disabled/teaser markup lives here rather than under Pro/)
@@ -375,6 +376,19 @@ thank-you page, and the My Account order view all render line items through
 emails), whereas the admin order edit screen uses
 `woocommerce_after_order_itemmeta` — hence the separate class rather than
 extending `ItemDisplay` onto both hooks.
+
+Each of those two customer-facing contexts has its own on/off setting in
+WooCommerce > Settings > Serial Numbers — `snw_show_serials_in_emails` and
+`snw_show_serials_in_account`, both defaulting to `yes` — for stores that
+would rather manage serial numbers internally than show them to the
+customer. Telling the two contexts apart is the tricky part: emails and the
+order-details page both call the item hook with `$plain_text` false, so
+`$plain_text` alone can't distinguish an HTML email from the account page.
+`CustomerItemDisplay` instead brackets itself with WooCommerce's own
+`woocommerce_email_order_details` / `woocommerce_email_after_order_table`
+hooks, which fire once each around an email's entire items table — setting
+an `$in_email` flag true for the former and false for the latter — so
+`render()` knows which setting applies to the item hook firing in between.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy

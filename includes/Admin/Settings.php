@@ -102,6 +102,33 @@ final class Settings extends \WC_Settings_Page {
 				'type' => 'sectionend',
 				'id'   => 'snw_generation_settings',
 			),
+
+			array(
+				'title' => __( 'Customer visibility', 'serial-number-for-woocommerce' ),
+				'type'  => 'title',
+				'desc'  => __( 'Serial numbers are always visible to store admins on the order edit screen. These control whether customers see them too — some stores prefer to manage serial numbers internally instead, so turn both off to keep them admin-only.', 'serial-number-for-woocommerce' ),
+				'id'    => 'snw_customer_visibility_settings',
+			),
+			array(
+				'title'    => __( 'Show in order emails', 'serial-number-for-woocommerce' ),
+				'desc'     => __( 'Include each item\'s assigned serial numbers in the customer\'s order emails.', 'serial-number-for-woocommerce' ),
+				'id'       => 'snw_show_serials_in_emails',
+				'type'     => 'checkbox',
+				'default'  => 'yes',
+				'desc_tip' => true,
+			),
+			array(
+				'title'    => __( 'Show on order details page', 'serial-number-for-woocommerce' ),
+				'desc'     => __( 'Include each item\'s assigned serial numbers on the thank-you page and the customer\'s My Account order view.', 'serial-number-for-woocommerce' ),
+				'id'       => 'snw_show_serials_in_account',
+				'type'     => 'checkbox',
+				'default'  => 'yes',
+				'desc_tip' => true,
+			),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'snw_customer_visibility_settings',
+			),
 		);
 	}
 }
