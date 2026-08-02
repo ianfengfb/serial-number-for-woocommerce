@@ -228,16 +228,17 @@ final class Repository {
 	}
 
 	/**
+	 * Builds the shared WHERE clause + params for $search/$filters, used by
+	 * both search() (paginated, for the list table) and search_all()
+	 * (unpaginated, for CSV export) so the two never drift apart.
+	 *
 	 * @param array $filters Optional: 'product_id' (int) filters to that
 	 *                       product; 'no_product' (truthy) filters to rows
 	 *                       with no product at all and wins over 'product_id'
 	 *                       if both are given.
 	 */
-	public static function search( string $search, int $per_page, int $page, array $filters = array() ): array {
+	private static function build_where( string $search, array $filters ): array {
 		global $wpdb;
-
-		$table  = self::table_name();
-		$offset = ( max( 1, $page ) - 1 ) * $per_page;
 
 		$where  = array();
 		$params = array();
@@ -254,24 +255,51 @@ final class Repository {
 			$params[] = (int) $filters['product_id'];
 		}
 
-		$where_sql = $where ? ( 'WHERE ' . implode( ' AND ', $where ) ) : '';
+		return array(
+			'sql'    => $where ? ( 'WHERE ' . implode( ' AND ', $where ) ) : '',
+			'params' => $params,
+		);
+	}
+
+	public static function search( string $search, int $per_page, int $page, array $filters = array() ): array {
+		global $wpdb;
+
+		$table  = self::table_name();
+		$offset = ( max( 1, $page ) - 1 ) * $per_page;
+		$built  = self::build_where( $search, $filters );
 
 		$items = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$table} {$where_sql} ORDER BY id DESC LIMIT %d OFFSET %d",
-				array_merge( $params, array( $per_page, $offset ) )
+				"SELECT * FROM {$table} {$built['sql']} ORDER BY id DESC LIMIT %d OFFSET %d",
+				array_merge( $built['params'], array( $per_page, $offset ) )
 			)
 		);
 
-		$total_sql = "SELECT COUNT(*) FROM {$table} {$where_sql}";
-		$total     = $params
-			? (int) $wpdb->get_var( $wpdb->prepare( $total_sql, $params ) )
+		$total_sql = "SELECT COUNT(*) FROM {$table} {$built['sql']}";
+		$total     = $built['params']
+			? (int) $wpdb->get_var( $wpdb->prepare( $total_sql, $built['params'] ) )
 			: (int) $wpdb->get_var( $total_sql );
 
 		return array(
 			'items' => $items,
 			'total' => $total,
 		);
+	}
+
+	/**
+	 * All rows matching $search/$filters, no pagination — backs CSV export.
+	 */
+	public static function search_all( string $search, array $filters = array() ): array {
+		global $wpdb;
+
+		$table = self::table_name();
+		$built = self::build_where( $search, $filters );
+
+		$sql = "SELECT * FROM {$table} {$built['sql']} ORDER BY id DESC";
+
+		return $built['params']
+			? $wpdb->get_results( $wpdb->prepare( $sql, $built['params'] ) )
+			: $wpdb->get_results( $sql );
 	}
 
 	/**
