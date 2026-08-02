@@ -35,6 +35,7 @@ class ComposerStaticInit71078b64631c62ac7ba6e3702d200d7c
         'SerialNumberForWooCommerce\\Licensing' => __DIR__ . '/../..' . '/includes/Licensing.php',
         'SerialNumberForWooCommerce\\Orders\\Ajax' => __DIR__ . '/../..' . '/includes/Orders/Ajax.php',
         'SerialNumberForWooCommerce\\Orders\\Assigner' => __DIR__ . '/../..' . '/includes/Orders/Assigner.php',
+        'SerialNumberForWooCommerce\\Orders\\CustomerItemDisplay' => __DIR__ . '/../..' . '/includes/Orders/CustomerItemDisplay.php',
         'SerialNumberForWooCommerce\\Orders\\ItemDisplay' => __DIR__ . '/../..' . '/includes/Orders/ItemDisplay.php',
         'SerialNumberForWooCommerce\\Plugin' => __DIR__ . '/../..' . '/includes/Plugin.php',
         'SerialNumberForWooCommerce\\Pro\\BulkGenerate\\Controller' => __DIR__ . '/../..' . '/includes/Pro/BulkGenerate/Controller.php',

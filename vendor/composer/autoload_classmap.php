@@ -20,6 +20,7 @@ return array(
     'SerialNumberForWooCommerce\\Licensing' => $baseDir . '/includes/Licensing.php',
     'SerialNumberForWooCommerce\\Orders\\Ajax' => $baseDir . '/includes/Orders/Ajax.php',
     'SerialNumberForWooCommerce\\Orders\\Assigner' => $baseDir . '/includes/Orders/Assigner.php',
+    'SerialNumberForWooCommerce\\Orders\\CustomerItemDisplay' => $baseDir . '/includes/Orders/CustomerItemDisplay.php',
     'SerialNumberForWooCommerce\\Orders\\ItemDisplay' => $baseDir . '/includes/Orders/ItemDisplay.php',
     'SerialNumberForWooCommerce\\Plugin' => $baseDir . '/includes/Plugin.php',
     'SerialNumberForWooCommerce\\Pro\\BulkGenerate\\Controller' => $baseDir . '/includes/Pro/BulkGenerate/Controller.php',
