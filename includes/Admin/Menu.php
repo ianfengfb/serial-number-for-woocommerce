@@ -7,6 +7,7 @@ use SerialNumberForWooCommerce\Admin\SerialNumbers\ListTable;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Licensing;
 use SerialNumberForWooCommerce\Pro\BulkGenerate\Controller as BulkGenerateController;
+use SerialNumberForWooCommerce\Pro\Import\Controller as ImportController;
 use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
@@ -119,6 +120,18 @@ final class Menu {
 			return;
 		}
 
+		if ( 'import' === $action ) {
+			if ( ! Licensing::is_pro_active() ) {
+				$this->render_import_teaser();
+				return;
+			}
+
+			$controller = new ImportController();
+			$controller->handle();
+			$controller->render();
+			return;
+		}
+
 		if ( 'delete' === $action ) {
 			$id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
 			$this->handle_delete( $id );
@@ -226,6 +239,20 @@ final class Menu {
 		<?php
 	}
 
+	private function render_import_teaser(): void {
+		$back_url = add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) );
+		?>
+		<div class="wrap">
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'Import Serial Numbers', 'serial-number-for-woocommerce' ); ?></h1>
+			<a href="<?php echo esc_url( $back_url ); ?>" class="page-title-action"><?php esc_html_e( 'Back to list', 'serial-number-for-woocommerce' ); ?></a>
+
+			<div class="notice notice-info" style="margin-top: 20px;">
+				<p><?php esc_html_e( 'Import CSV is a Pro feature. Upgrade to bulk-add serial numbers from a CSV file, with a preview before anything is imported.', 'serial-number-for-woocommerce' ); ?></p>
+			</div>
+		</div>
+		<?php
+	}
+
 	private function render_list(): void {
 		$list_table = new ListTable();
 
@@ -248,6 +275,14 @@ final class Menu {
 			array(
 				'page'   => 'serial-number-for-woocommerce',
 				'action' => 'bulk-generate',
+			),
+			admin_url( 'admin.php' )
+		);
+
+		$import_url = add_query_arg(
+			array(
+				'page'   => 'serial-number-for-woocommerce',
+				'action' => 'import',
 			),
 			admin_url( 'admin.php' )
 		);
@@ -275,6 +310,7 @@ final class Menu {
 			<a href="<?php echo esc_url( $add_new_url ); ?>" class="page-title-action"><?php esc_html_e( 'Add New', 'serial-number-for-woocommerce' ); ?></a>
 			<?php if ( Licensing::is_pro_active() ) : ?>
 				<a href="<?php echo esc_url( $bulk_generate_url ); ?>" class="page-title-action"><?php esc_html_e( 'Bulk Generate', 'serial-number-for-woocommerce' ); ?></a>
+				<a href="<?php echo esc_url( $import_url ); ?>" class="page-title-action"><?php esc_html_e( 'Import CSV', 'serial-number-for-woocommerce' ); ?></a>
 				<a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'serial-number-for-woocommerce' ); ?></a>
 			<?php else : ?>
 				<a
@@ -284,6 +320,17 @@ final class Menu {
 					title="<?php esc_attr_e( 'Upgrade to Pro to unlock Bulk Generate', 'serial-number-for-woocommerce' ); ?>"
 				>
 					<?php esc_html_e( 'Bulk Generate', 'serial-number-for-woocommerce' ); ?>
+					<span style="background: #7f54b3; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">
+						<?php esc_html_e( 'PRO', 'serial-number-for-woocommerce' ); ?>
+					</span>
+				</a>
+				<a
+					href="<?php echo esc_url( $import_url ); ?>"
+					class="page-title-action"
+					style="opacity: 0.5;"
+					title="<?php esc_attr_e( 'Upgrade to Pro to unlock Import CSV', 'serial-number-for-woocommerce' ); ?>"
+				>
+					<?php esc_html_e( 'Import CSV', 'serial-number-for-woocommerce' ); ?>
 					<span style="background: #7f54b3; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">
 						<?php esc_html_e( 'PRO', 'serial-number-for-woocommerce' ); ?>
 					</span>
@@ -335,6 +382,23 @@ final class Menu {
 						);
 						?>
 					</p>
+				</div>
+			<?php elseif ( isset( $_GET['snw_notice'] ) && 'imported' === $_GET['snw_notice'] ) : ?>
+				<div class="notice notice-success is-dismissible">
+					<p>
+						<?php
+						printf(
+							/* translators: 1: number of serial numbers imported, 2: number of rows skipped */
+							esc_html__( '%1$d serial numbers imported. %2$d row(s) skipped.', 'serial-number-for-woocommerce' ),
+							isset( $_GET['snw_count'] ) ? absint( $_GET['snw_count'] ) : 0,
+							isset( $_GET['snw_skipped'] ) ? absint( $_GET['snw_skipped'] ) : 0
+						);
+						?>
+					</p>
+				</div>
+			<?php elseif ( isset( $_GET['snw_notice'] ) && 'import_expired' === $_GET['snw_notice'] ) : ?>
+				<div class="notice notice-error is-dismissible">
+					<p><?php esc_html_e( 'This import preview had expired, so nothing was imported. Please upload the file again.', 'serial-number-for-woocommerce' ); ?></p>
 				</div>
 			<?php endif; ?>
 
