@@ -61,7 +61,7 @@ includes/
   Licensing.php                     is_pro_active() gate (see above)
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/delete/
-                                     bulk-generate routing; list view has a by-product / no-product filter)
+                                     bulk-generate/import routing; list view has a by-product / no-product filter)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
   Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, unlabeled Free area plus a "Pro Features"
                                      area (see Free/Pro architecture rules above for why the Pro controls'
@@ -84,6 +84,8 @@ includes/
     CustomRules/Ajax.php            Pro: wp_ajax_snw_bulk_generate_for_product (product tab's own bulk-generate)
     BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
     Export/Exporter.php             Pro: streams the (optionally filtered) list as a CSV via admin_post
+    Import/Controller.php           Pro: CSV import page — upload+parse, transient-backed preview, commit
+    Import/RowParser.php            Pro: pure per-row parsing/validation shared by preview and commit
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -225,6 +227,68 @@ plain `<span>`, not a link — there's no HTML admin page on the other end of
 `admin_post_snw_export_serials` to redirect to when it isn't hooked (the
 whole point of admin-post is to skip page rendering), so a dead link would
 be a worse experience than a non-clickable control.
+
+## CSV import (Pro)
+
+`Pro\Import\Controller` is a normal admin page reached via `?action=import`
+(unlike Export, so its unlicensed teaser is a clickable link, same pattern
+as Bulk Generate). It's a two-step upload -> preview -> commit flow, never a
+straight upload -> insert, because nothing may be written to the database
+until a human has reviewed a preview and confirmed it:
+
+1. **Upload** (`handle_upload()`, triggered by `$_POST['snw_import_upload']`):
+   validates the uploaded file has a header row matching
+   `Import\RowParser::EXPECTED_HEADERS` exactly (`serial_number, status,
+   product_sku, product_id, expires_at`) — no other header layout is
+   accepted — reads up to `Controller::MAX_ROWS` (1000) data rows via
+   `fgetcsv()`, and hands them to `RowParser::parse_rows()`. The parsed
+   result (per-row status/product/expiry resolution plus any errors/
+   warnings) is stored in a transient keyed by a one-time token
+   (`wp_generate_password()`) for `Controller::TRANSIENT_TTL` (15 minutes),
+   then the request redirects to `?action=import&token=...` (Post-Redirect-
+   Get, so reloading the preview never re-parses the file).
+2. **Preview** (`render_preview()`): reads the transient by token and renders
+   one row per parsed line with a Result column — a row with any error shows
+   ✕ and will be skipped; a row with only warnings still imports (⚠) but
+   flags what changed; a clean row shows ✓. A missing/expired transient (TTL
+   elapsed, or a stale/reused link) shows an expired notice and falls back to
+   the upload form instead of erroring.
+3. **Commit** (`handle_commit()`, triggered by `$_POST['snw_import_commit']`
+   posting the token back): loads the same transient, skips any row with
+   errors *or* that now fails a fresh `Repository::exists()` re-check (state
+   may have changed since the preview — e.g. another import or manual add
+   used that serial number in the meantime), inserts the rest via
+   `Repository::insert()`, syncs stock once per distinct touched product
+   (gated the same as everywhere else), then deletes the transient so the
+   token can't be replayed, and redirects to the list with an `imported`
+   notice (imported + skipped counts).
+
+`RowParser` holds the parsing/validation rules alone (no file or DB-write
+handling), so preview and commit run identically:
+
+- **Product** (`resolve_product()`): `product_id` is checked first and, when
+  given, is an override; `product_sku` is otherwise the primary lookup via
+  `wc_get_product_id_by_sku()`. Both blank means no product for that row. A
+  given-but-unresolvable ID or SKU is an *error* (row skipped), not silently
+  treated as no product — that would drop the intended assignment without
+  telling anyone.
+- **Status** (`resolve_status()`): matched against `Status::all()`
+  case-insensitively; blank uses `Status::configured_default()`; an
+  unrecognized value also falls back to the configured default, but only as
+  a *warning* — the row is still imported.
+- **Expiry** (`resolve_expiry()`): must be `dd/mm/yyyy`, validated with
+  `checkdate()`. Blank means no expiry (no warning). An unparseable or
+  calendar-invalid value is treated as no expiry too, flagged as a warning
+  rather than an error, since the row is still importable.
+- **Duplicates**: within the same file, the second and later occurrence of a
+  serial number (case-insensitive) is an error; so is one that already
+  exists in the table. Both are caught at preview time; the commit step's
+  `Repository::exists()` re-check only catches what changed *after* the
+  preview was generated.
+- **Order ID is never accepted** — there is no `order_id` column in
+  `EXPECTED_HEADERS` at all; every imported row is inserted with
+  `order_id => 0`, matching how every other bulk-creation path (bulk-add
+  textarea, Bulk Generate) works.
 
 ## Order assignment
 

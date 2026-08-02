@@ -25,5 +25,7 @@ return array(
     'SerialNumberForWooCommerce\\Pro\\CustomRules\\Ajax' => $baseDir . '/includes/Pro/CustomRules/Ajax.php',
     'SerialNumberForWooCommerce\\Pro\\CustomRules\\CustomRules' => $baseDir . '/includes/Pro/CustomRules/CustomRules.php',
     'SerialNumberForWooCommerce\\Pro\\Export\\Exporter' => $baseDir . '/includes/Pro/Export/Exporter.php',
+    'SerialNumberForWooCommerce\\Pro\\Import\\Controller' => $baseDir . '/includes/Pro/Import/Controller.php',
+    'SerialNumberForWooCommerce\\Pro\\Import\\RowParser' => $baseDir . '/includes/Pro/Import/RowParser.php',
     'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => $baseDir . '/includes/Pro/StockSync/StockSync.php',
 );
