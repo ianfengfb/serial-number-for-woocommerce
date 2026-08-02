@@ -28,6 +28,7 @@ final class Plugin {
 
 		if ( Licensing::is_pro_active() ) {
 			new Pro\CustomRules\Ajax();
+			new Pro\Export\Exporter();
 		}
 
 		add_filter(

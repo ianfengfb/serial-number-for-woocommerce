@@ -251,12 +251,31 @@ final class Menu {
 			),
 			admin_url( 'admin.php' )
 		);
+
+		$filter_product_id = isset( $_GET['snw_filter_product_id'] ) ? absint( $_GET['snw_filter_product_id'] ) : 0;
+		$filter_no_product = isset( $_GET['snw_filter_no_product'] );
+		$filter_search      = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+
+		$export_args = array( 'action' => 'snw_export_serials' );
+
+		if ( '' !== $filter_search ) {
+			$export_args['s'] = $filter_search;
+		}
+
+		if ( $filter_no_product ) {
+			$export_args['snw_filter_no_product'] = 1;
+		} elseif ( $filter_product_id ) {
+			$export_args['snw_filter_product_id'] = $filter_product_id;
+		}
+
+		$export_url = wp_nonce_url( add_query_arg( $export_args, admin_url( 'admin-post.php' ) ), 'snw_export_serials' );
 		?>
 		<div class="wrap">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Serial Numbers', 'serial-number-for-woocommerce' ); ?></h1>
 			<a href="<?php echo esc_url( $add_new_url ); ?>" class="page-title-action"><?php esc_html_e( 'Add New', 'serial-number-for-woocommerce' ); ?></a>
 			<?php if ( Licensing::is_pro_active() ) : ?>
 				<a href="<?php echo esc_url( $bulk_generate_url ); ?>" class="page-title-action"><?php esc_html_e( 'Bulk Generate', 'serial-number-for-woocommerce' ); ?></a>
+				<a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'serial-number-for-woocommerce' ); ?></a>
 			<?php else : ?>
 				<a
 					href="<?php echo esc_url( $bulk_generate_url ); ?>"
@@ -269,6 +288,16 @@ final class Menu {
 						<?php esc_html_e( 'PRO', 'serial-number-for-woocommerce' ); ?>
 					</span>
 				</a>
+				<span
+					class="page-title-action"
+					style="opacity: 0.5;"
+					title="<?php esc_attr_e( 'Upgrade to Pro to unlock Export CSV', 'serial-number-for-woocommerce' ); ?>"
+				>
+					<?php esc_html_e( 'Export CSV', 'serial-number-for-woocommerce' ); ?>
+					<span style="background: #7f54b3; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">
+						<?php esc_html_e( 'PRO', 'serial-number-for-woocommerce' ); ?>
+					</span>
+				</span>
 			<?php endif; ?>
 
 			<?php if ( isset( $_GET['snw_notice'] ) && 'added' === $_GET['snw_notice'] ) : ?>
@@ -310,8 +339,6 @@ final class Menu {
 			<?php endif; ?>
 
 			<?php
-			$filter_product_id = isset( $_GET['snw_filter_product_id'] ) ? absint( $_GET['snw_filter_product_id'] ) : 0;
-			$filter_no_product = isset( $_GET['snw_filter_no_product'] );
 			$filter_product_option = null;
 
 			if ( $filter_product_id ) {

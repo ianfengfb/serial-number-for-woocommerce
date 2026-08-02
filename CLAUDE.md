@@ -83,6 +83,7 @@ includes/
     CustomRules/CustomRules.php     Pro: a product's own auto-generation rule, overriding the global one
     CustomRules/Ajax.php            Pro: wp_ajax_snw_bulk_generate_for_product (product tab's own bulk-generate)
     BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
+    Export/Exporter.php             Pro: streams the (optionally filtered) list as a CSV via admin_post
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -199,6 +200,31 @@ The product tab's own "Bulk generate for this product" button always reads
 the product's *saved* meta at generate time, not whatever's currently typed
 into the rule fields — the tooltip says as much, so save the product first
 if the rule was just changed.
+
+## CSV export (Pro)
+
+`Pro\Export\Exporter` hooks `admin_post_snw_export_serials` — a raw
+file-download response, not a normal admin page, so it can't go through the
+usual `?page=serial-number-for-woocommerce&action=` routing in `Admin\Menu`.
+The "Export CSV" button links straight to `admin-post.php` with the list's
+*current* search term and product filter carried over as query args, so the
+export always matches what's on screen. `Repository::search_all()` shares
+its WHERE-building (`build_where()`) with the paginated `search()` used by
+the list table, so the two filtering behaviors can't drift apart.
+
+Export columns are `serial_number, status, product_id, product_sku,
+product_name, order_id, created_at, expires_at` — raw values (status key,
+not its translated label; ISO datetime, not the list table's localized
+display format) so the file stays useful as an input to a future CSV
+import, not just as a human-readable report. `product_sku`/`product_name`
+are resolved at export time purely for readability; `product_id` is the
+authoritative column.
+
+Unlike Bulk Generate's teaser page, an unlicensed "Export CSV" renders as a
+plain `<span>`, not a link — there's no HTML admin page on the other end of
+`admin_post_snw_export_serials` to redirect to when it isn't hooked (the
+whole point of admin-post is to skip page rendering), so a dead link would
+be a worse experience than a non-clickable control.
 
 ## Order assignment
 
