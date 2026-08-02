@@ -17,6 +17,11 @@ defined( 'ABSPATH' ) || exit;
  * - Expired     Past its expiry date, so no longer valid.
  * - Unavailable Deliberately withheld — revoked, refunded, faulty or reserved.
  *               Never handed out, but kept on record.
+ * - Deleted     Soft-deleted via the list table's Delete action. A normal
+ *               selectable status like any other (editable back to something
+ *               else), kept rather than hard-deleted for audit/recoverability.
+ *               Needs no special exclusion in Available-counting queries —
+ *               they already filter for `status = 'available'` specifically.
  *
  * Stored values are the lowercase keys; labels are display-only and
  * translatable, so never persist or compare against a label.
@@ -28,6 +33,7 @@ final class Status {
 	const ACTIVATED   = 'activated';
 	const EXPIRED     = 'expired';
 	const UNAVAILABLE = 'unavailable';
+	const DELETED     = 'deleted';
 
 	/**
 	 * Used when no default has been configured, or the configured one is no
@@ -48,6 +54,7 @@ final class Status {
 			self::ACTIVATED   => __( 'Activated', 'serial-number-for-woocommerce' ),
 			self::EXPIRED     => __( 'Expired', 'serial-number-for-woocommerce' ),
 			self::UNAVAILABLE => __( 'Unavailable', 'serial-number-for-woocommerce' ),
+			self::DELETED     => __( 'Deleted', 'serial-number-for-woocommerce' ),
 		);
 	}
 

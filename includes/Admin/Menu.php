@@ -4,8 +4,10 @@ namespace SerialNumberForWooCommerce\Admin;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Ajax;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\FormController;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\ListTable;
+use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Licensing;
 use SerialNumberForWooCommerce\Pro\BulkGenerate\Controller as BulkGenerateController;
+use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -117,7 +119,47 @@ final class Menu {
 			return;
 		}
 
+		if ( 'delete' === $action ) {
+			$id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+			$this->handle_delete( $id );
+			return;
+		}
+
 		$this->render_list();
+	}
+
+	/**
+	 * Soft-deletes a serial number (sets its status to Deleted) and resyncs
+	 * stock for its product, since a deleted row no longer counts toward
+	 * Repository::count_available().
+	 */
+	private function handle_delete( int $id ): void {
+		check_admin_referer( 'snw_delete_serial_number_' . $id );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'serial-number-for-woocommerce' ) );
+		}
+
+		$serial = Repository::find( $id );
+
+		if ( $serial ) {
+			Repository::mark_deleted( $id );
+
+			if ( Licensing::is_pro_active() && $serial->product_id ) {
+				StockSync::sync( (int) $serial->product_id );
+			}
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'       => 'serial-number-for-woocommerce',
+					'snw_notice' => 'deleted',
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
 	}
 
 	private function render_bulk_generate_teaser(): void {
@@ -193,16 +235,81 @@ final class Menu {
 						?>
 					</p>
 				</div>
+			<?php elseif ( isset( $_GET['snw_notice'] ) && 'deleted' === $_GET['snw_notice'] ) : ?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php esc_html_e( 'Serial number deleted.', 'serial-number-for-woocommerce' ); ?></p>
+				</div>
 			<?php endif; ?>
+
+			<?php
+			$filter_product_id = isset( $_GET['snw_filter_product_id'] ) ? absint( $_GET['snw_filter_product_id'] ) : 0;
+			$filter_no_product = isset( $_GET['snw_filter_no_product'] );
+			$filter_product_option = null;
+
+			if ( $filter_product_id ) {
+				$filter_product = wc_get_product( $filter_product_id );
+
+				if ( $filter_product ) {
+					$filter_product_option = Ajax::format_product_option( $filter_product );
+				}
+			}
+			?>
 
 			<form method="get">
 				<input type="hidden" name="page" value="serial-number-for-woocommerce" />
+
+				<p style="display: flex; align-items: center; gap: 10px; margin: 1em 0;">
+					<label for="snw-filter-product-id"><strong><?php esc_html_e( 'Filter by product:', 'serial-number-for-woocommerce' ); ?></strong></label>
+					<select
+						id="snw-filter-product-id"
+						name="snw_filter_product_id"
+						class="snw-search-select"
+						data-type="product"
+						data-placeholder="<?php esc_attr_e( 'All products', 'serial-number-for-woocommerce' ); ?>"
+						style="min-width: 240px;"
+						<?php disabled( $filter_no_product ); ?>
+					>
+						<option value=""></option>
+						<?php if ( $filter_product_option ) : ?>
+							<option value="<?php echo esc_attr( $filter_product_option['id'] ); ?>" selected><?php echo esc_html( $filter_product_option['text'] ); ?></option>
+						<?php endif; ?>
+					</select>
+					<label>
+						<input type="checkbox" id="snw-filter-no-product" name="snw_filter_no_product" value="1" <?php checked( $filter_no_product ); ?> />
+						<?php esc_html_e( 'No product', 'serial-number-for-woocommerce' ); ?>
+					</label>
+				</p>
+
 				<?php
 				$list_table->search_box( __( 'Search Serial Numbers', 'serial-number-for-woocommerce' ), 'snw-search' );
 				$list_table->display();
 				?>
 			</form>
 		</div>
+		<script>
+		jQuery( function ( $ ) {
+			var $productFilter = $( '#snw-filter-product-id' );
+			var $noProductFilter = $( '#snw-filter-no-product' );
+
+			$noProductFilter.on( 'change', function () {
+				if ( $( this ).is( ':checked' ) ) {
+					$productFilter.val( null ).trigger( 'change' ).prop( 'disabled', true );
+				} else {
+					$productFilter.prop( 'disabled', false );
+				}
+
+				this.form.submit();
+			} );
+
+			$productFilter.on( 'change', function () {
+				if ( $( this ).val() ) {
+					$noProductFilter.prop( 'checked', false );
+				}
+
+				this.form.submit();
+			} );
+		} );
+		</script>
 		<?php
 	}
 }

@@ -38,9 +38,14 @@ final class ListTable extends \WP_List_Table {
 		$current_page = $this->get_pagenum();
 		$search       = isset( $_REQUEST['s'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ) : '';
 
+		$filters = array(
+			'no_product' => isset( $_REQUEST['snw_filter_no_product'] ) ? 1 : 0,
+			'product_id' => isset( $_REQUEST['snw_filter_product_id'] ) ? absint( $_REQUEST['snw_filter_product_id'] ) : 0,
+		);
+
 		$this->_column_headers = array( $this->get_columns(), array(), array() );
 
-		$result = Repository::search( $search, $per_page, $current_page );
+		$result = Repository::search( $search, $per_page, $current_page, $filters );
 
 		$this->items = $result['items'];
 
@@ -71,8 +76,26 @@ final class ListTable extends \WP_List_Table {
 			admin_url( 'admin.php' )
 		);
 
+		$delete_url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'page'   => 'serial-number-for-woocommerce',
+					'action' => 'delete',
+					'id'     => $item->id,
+				),
+				admin_url( 'admin.php' )
+			),
+			'snw_delete_serial_number_' . $item->id
+		);
+
 		$actions = array(
-			'edit' => sprintf( '<a href="%s">%s</a>', esc_url( $edit_url ), esc_html__( 'Edit', 'serial-number-for-woocommerce' ) ),
+			'edit'   => sprintf( '<a href="%s">%s</a>', esc_url( $edit_url ), esc_html__( 'Edit', 'serial-number-for-woocommerce' ) ),
+			'delete' => sprintf(
+				'<a href="%s" onclick="return confirm(%s);">%s</a>',
+				esc_url( $delete_url ),
+				esc_attr( wp_json_encode( __( 'Delete this serial number?', 'serial-number-for-woocommerce' ) ) ),
+				esc_html__( 'Delete', 'serial-number-for-woocommerce' )
+			),
 		);
 
 		return esc_html( $item->serial_number ) . $this->row_actions( $actions );
