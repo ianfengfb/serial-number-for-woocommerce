@@ -52,6 +52,21 @@ final class Repository {
 		return $row ?: null;
 	}
 
+	/**
+	 * Looks up a row by its exact serial number string — used by the order
+	 * edit screen's "Add Serial Number" control to decide whether a typed
+	 * value is brand new or an existing row to validate/reuse.
+	 */
+	public static function find_by_serial_number( string $serial_number ): ?object {
+		global $wpdb;
+
+		$table = self::table_name();
+
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE serial_number = %s", $serial_number ) );
+
+		return $row ?: null;
+	}
+
 	public static function update( int $id, array $data ): void {
 		global $wpdb;
 

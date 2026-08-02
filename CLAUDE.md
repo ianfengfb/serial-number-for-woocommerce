@@ -76,8 +76,14 @@ includes/
     Generator.php                   Builds a random serial from the configured (or per-call override) rules
     Ajax.php                        wp_ajax_snw_search_products / snw_search_orders / snw_generate_serial / snw_import_serials
   Orders/
-    Assigner.php                    Free tier: assigns serials to order line items when an order is placed
-    ItemDisplay.php                 Free tier: shows an item's assigned serials on the admin order edit screen
+    Assigner.php                    Free tier: assigns serials to order line items when an order is placed;
+                                     also holds add_manual_serial(), the create-or-attach-or-reject logic
+                                     behind the order edit screen's manual "Add Serial Number" control
+    ItemDisplay.php                 Free tier: shows an item's assigned serials plus the "Add Serial Number"
+                                     control on the admin order edit screen
+    Ajax.php                        wp_ajax_snw_add_order_item_serial backing that control; enqueues
+                                     assets/js/order-item-serials.js only on the order edit screen (HPOS-
+                                     or CPT-storage-aware via wc_get_page_screen_id())
   Pro/
     StockSync/StockSync.php         Pro: mirrors a product's Available pool count onto WC stock
     CustomRules/CustomRules.php     Pro: a product's own auto-generation rule, overriding the global one
@@ -310,9 +316,37 @@ assigns the difference between an item's quantity and the serials it holds.
 
 `Orders\ItemDisplay` hooks `woocommerce_after_order_itemmeta` to show each
 item's assigned serials (resolved from `Assigner::serial_ids()` via
-`Repository::find()`) on the admin order edit screen — read-only, no new
-data, so it's the one place both HPOS and legacy order storage need no
-special handling.
+`Repository::find()`) on the admin order edit screen, and — for orders whose
+item was never auto-assigned in the first place, e.g. the product wasn't
+`_snw_enabled` yet at checkout — an "Add Serial Number" input + button
+underneath, always shown regardless of whether the item already holds any
+serials (this is a manual override tool, not a top-up).
+
+That control posts to `wp_ajax_snw_add_order_item_serial` (`Orders\Ajax`,
+enqueuing `assets/js/order-item-serials.js` only on the order edit screen —
+resolved via `wc_get_page_screen_id( 'shop-order' )` so it works whether HPOS
+or legacy CPT order storage is active), which loads the item scoped to the
+posted order (`$order->get_item( $item_id, false )`, so an item ID from a
+different order is rejected rather than loaded anyway) and hands off to
+`Assigner::add_manual_serial( $item, $serial_number )` — the single place
+that decides what a typed-in serial number means:
+
+- **Unknown to the table**: created fresh, `Status::ASSIGNED`, tied to this
+  item's product and order — same end state a normal checkout assignment
+  would leave it in.
+- **Known, not yet tied to any order, and its stored `product_id` matches
+  this item's product**: updated to `Status::ASSIGNED` and this order —
+  existing status is overwritten regardless of what it was, same as editing
+  any other field on the Add/Edit form.
+- **Known but already tied to an order, or tied to a *different* product**:
+  rejected with a message explaining which, and left untouched — never
+  silently reassigned or detached from its actual owner.
+
+Either way, the serial's row ID is appended to the item's `Assigner::ITEM_META_KEY`
+meta (idempotently — skipped if already present) and `StockSync::sync()` runs
+if licensed, matching every other write path that can change a product's
+Available count. On success the page simply reloads rather than patching the
+DOM, since the read-only serial list above is rendered server-side.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy

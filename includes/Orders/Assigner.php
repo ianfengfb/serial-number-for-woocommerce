@@ -141,6 +141,108 @@ final class Assigner {
 	}
 
 	/**
+	 * Backs the "Add Serial Number" control on the admin order edit screen,
+	 * for orders whose item never got auto-assigned (e.g. the product wasn't
+	 * serial-number-enabled yet at checkout):
+	 *
+	 * - Unknown serial number: created fresh, Assigned to this item's product/order.
+	 * - Known, unassigned, and matching this item's product: updated to Assigned
+	 *   and tied to this order.
+	 * - Known but already assigned to an order, or tied to a different product:
+	 *   rejected rather than silently reassigned or detached from its owner.
+	 *
+	 * @return array{success: bool, message: string}
+	 */
+	public static function add_manual_serial( \WC_Order_Item_Product $item, string $serial_number ): array {
+		$serial_number = trim( $serial_number );
+
+		if ( '' === $serial_number ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Please enter a serial number.', 'serial-number-for-woocommerce' ),
+			);
+		}
+
+		$product_id = $item->get_product_id();
+		$order_id   = $item->get_order_id();
+		$existing   = Repository::find_by_serial_number( $serial_number );
+
+		if ( $existing ) {
+			$existing_order_id   = (int) ( $existing->order_id ?? 0 );
+			$existing_product_id = (int) ( $existing->product_id ?? 0 );
+
+			if ( $existing_order_id ) {
+				return array(
+					'success' => false,
+					'message' => sprintf(
+						/* translators: %s: the serial number that was typed in */
+						__( '"%s" is already assigned to another order.', 'serial-number-for-woocommerce' ),
+						$serial_number
+					),
+				);
+			}
+
+			if ( $existing_product_id !== $product_id ) {
+				return array(
+					'success' => false,
+					'message' => sprintf(
+						/* translators: %s: the serial number that was typed in */
+						__( '"%s" belongs to a different product.', 'serial-number-for-woocommerce' ),
+						$serial_number
+					),
+				);
+			}
+
+			Repository::update(
+				$existing->id,
+				array(
+					'serial_number' => $existing->serial_number,
+					'status'        => Status::ASSIGNED,
+					'product_id'    => $product_id,
+					'order_id'      => $order_id,
+					'expires_at'    => $existing->expires_at,
+				)
+			);
+
+			$serial_id = (int) $existing->id;
+		} else {
+			$serial_id = Repository::insert(
+				array(
+					'serial_number' => $serial_number,
+					'status'        => Status::ASSIGNED,
+					'product_id'    => $product_id,
+					'order_id'      => $order_id,
+					'expires_at'    => '',
+				)
+			);
+
+			if ( ! $serial_id ) {
+				return array(
+					'success' => false,
+					'message' => __( 'Could not save this serial number.', 'serial-number-for-woocommerce' ),
+				);
+			}
+		}
+
+		$serial_ids = self::serial_ids( $item );
+
+		if ( ! in_array( $serial_id, $serial_ids, true ) ) {
+			$serial_ids[] = $serial_id;
+			$item->update_meta_data( self::ITEM_META_KEY, $serial_ids );
+			$item->save();
+		}
+
+		if ( Licensing::is_pro_active() && $product_id ) {
+			StockSync::sync( $product_id );
+		}
+
+		return array(
+			'success' => true,
+			'message' => __( 'Serial number added.', 'serial-number-for-woocommerce' ),
+		);
+	}
+
+	/**
 	 * Creates a brand new serial number already Assigned to the order, for when
 	 * the product's pool has nothing left to hand out. Returns 0 if the
 	 * generated value still collided with an existing one.
