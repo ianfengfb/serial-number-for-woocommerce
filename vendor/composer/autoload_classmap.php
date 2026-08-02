@@ -18,6 +18,7 @@ return array(
     'SerialNumberForWooCommerce\\Admin\\Settings' => $baseDir . '/includes/Admin/Settings.php',
     'SerialNumberForWooCommerce\\Install' => $baseDir . '/includes/Install.php',
     'SerialNumberForWooCommerce\\Licensing' => $baseDir . '/includes/Licensing.php',
+    'SerialNumberForWooCommerce\\Orders\\Ajax' => $baseDir . '/includes/Orders/Ajax.php',
     'SerialNumberForWooCommerce\\Orders\\Assigner' => $baseDir . '/includes/Orders/Assigner.php',
     'SerialNumberForWooCommerce\\Orders\\ItemDisplay' => $baseDir . '/includes/Orders/ItemDisplay.php',
     'SerialNumberForWooCommerce\\Plugin' => $baseDir . '/includes/Plugin.php',
