@@ -40,6 +40,8 @@ class ComposerStaticInit71078b64631c62ac7ba6e3702d200d7c
         'SerialNumberForWooCommerce\\Pro\\CustomRules\\Ajax' => __DIR__ . '/../..' . '/includes/Pro/CustomRules/Ajax.php',
         'SerialNumberForWooCommerce\\Pro\\CustomRules\\CustomRules' => __DIR__ . '/../..' . '/includes/Pro/CustomRules/CustomRules.php',
         'SerialNumberForWooCommerce\\Pro\\Export\\Exporter' => __DIR__ . '/../..' . '/includes/Pro/Export/Exporter.php',
+        'SerialNumberForWooCommerce\\Pro\\Import\\Controller' => __DIR__ . '/../..' . '/includes/Pro/Import/Controller.php',
+        'SerialNumberForWooCommerce\\Pro\\Import\\RowParser' => __DIR__ . '/../..' . '/includes/Pro/Import/RowParser.php',
         'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => __DIR__ . '/../..' . '/includes/Pro/StockSync/StockSync.php',
     );
 
