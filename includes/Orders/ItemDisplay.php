@@ -1,8 +1,6 @@
 <?php
 namespace SerialNumberForWooCommerce\Orders;
 
-use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
-
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -26,16 +24,7 @@ final class ItemDisplay {
 			return;
 		}
 
-		$serial_ids     = Assigner::serial_ids( $item );
-		$serial_numbers = array();
-
-		foreach ( $serial_ids as $serial_id ) {
-			$serial = Repository::find( $serial_id );
-
-			if ( $serial ) {
-				$serial_numbers[] = $serial->serial_number;
-			}
-		}
+		$serial_numbers = Assigner::serial_numbers( $item );
 
 		if ( ! empty( $serial_numbers ) ) {
 			?>

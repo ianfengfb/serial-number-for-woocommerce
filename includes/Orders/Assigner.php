@@ -141,6 +141,25 @@ final class Assigner {
 	}
 
 	/**
+	 * Serial number strings assigned to a line item, resolved from
+	 * serial_ids() — shared by every read-only display of an item's
+	 * serials (admin order edit screen, customer emails/account view).
+	 */
+	public static function serial_numbers( \WC_Order_Item_Product $item ): array {
+		$serial_numbers = array();
+
+		foreach ( self::serial_ids( $item ) as $serial_id ) {
+			$serial = Repository::find( $serial_id );
+
+			if ( $serial ) {
+				$serial_numbers[] = $serial->serial_number;
+			}
+		}
+
+		return $serial_numbers;
+	}
+
+	/**
 	 * Backs the "Add Serial Number" control on the admin order edit screen,
 	 * for orders whose item never got auto-assigned (e.g. the product wasn't
 	 * serial-number-enabled yet at checkout):
