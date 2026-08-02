@@ -78,10 +78,13 @@ includes/
   Orders/
     Assigner.php                    Free tier: assigns serials to order line items when an order is placed;
                                      also holds add_manual_serial(), the create-or-attach-or-reject logic
-                                     behind the order edit screen's manual "Add Serial Number" control
+                                     behind the order edit screen's manual "Add Serial Number" control, and
+                                     serial_numbers(), the read-only lookup both display classes below share
     ItemDisplay.php                 Free tier: shows an item's assigned serials plus the "Add Serial Number"
                                      control on the admin order edit screen
-    Ajax.php                        wp_ajax_snw_add_order_item_serial backing that control; enqueues
+    CustomerItemDisplay.php         Free tier: shows an item's assigned serials to the customer — order
+                                     emails (HTML + plain text), the thank-you page, and My Account order view
+    Ajax.php                        wp_ajax_snw_add_order_item_serial backing the admin control; enqueues
                                      assets/js/order-item-serials.js only on the order edit screen (HPOS-
                                      or CPT-storage-aware via wc_get_page_screen_id())
   Pro/
@@ -207,7 +210,7 @@ even while `_snw_custom_rule_enabled` is off, so re-checking it later
 doesn't lose what was typed — `is_enabled_for_product()` alone gates whether
 they take effect, same pattern as `StockSync`.
 
-The product tab's own "Bulk generate SN(s)" button always reads the
+The product tab's own "Bulk generate this amount of serial numbers" button always reads the
 product's *saved* meta at generate time, not whatever's currently typed
 into the rule fields — the tooltip says as much, so save the product first
 if the rule was just changed.
@@ -363,6 +366,15 @@ meta (idempotently — skipped if already present) and `StockSync::sync()` runs
 if licensed, matching every other write path that can change a product's
 Available count. On success the page simply reloads rather than patching the
 DOM, since the read-only serial list above is rendered server-side.
+
+`Orders\CustomerItemDisplay` shows the same read-only list
+(`Assigner::serial_numbers()`, shared with `ItemDisplay` rather than
+re-querying) to the customer, but on a different hook: order emails, the
+thank-you page, and the My Account order view all render line items through
+`woocommerce_order_item_meta_end` (with a `$plain_text` arg for plain-text
+emails), whereas the admin order edit screen uses
+`woocommerce_after_order_itemmeta` — hence the separate class rather than
+extending `ItemDisplay` onto both hooks.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
