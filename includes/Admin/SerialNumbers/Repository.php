@@ -227,35 +227,69 @@ final class Repository {
 		);
 	}
 
-	public static function search( string $search, int $per_page, int $page ): array {
+	/**
+	 * @param array $filters Optional: 'product_id' (int) filters to that
+	 *                       product; 'no_product' (truthy) filters to rows
+	 *                       with no product at all and wins over 'product_id'
+	 *                       if both are given.
+	 */
+	public static function search( string $search, int $per_page, int $page, array $filters = array() ): array {
 		global $wpdb;
 
 		$table  = self::table_name();
 		$offset = ( max( 1, $page ) - 1 ) * $per_page;
 
+		$where  = array();
+		$params = array();
+
 		if ( '' !== $search ) {
-			$like  = '%' . $wpdb->esc_like( $search ) . '%';
-			$items = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT * FROM {$table} WHERE serial_number LIKE %s ORDER BY id DESC LIMIT %d OFFSET %d",
-					$like,
-					$per_page,
-					$offset
-				)
-			);
-			$total = (int) $wpdb->get_var(
-				$wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE serial_number LIKE %s", $like )
-			);
-		} else {
-			$items = $wpdb->get_results(
-				$wpdb->prepare( "SELECT * FROM {$table} ORDER BY id DESC LIMIT %d OFFSET %d", $per_page, $offset )
-			);
-			$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+			$where[]  = 'serial_number LIKE %s';
+			$params[] = '%' . $wpdb->esc_like( $search ) . '%';
 		}
+
+		if ( ! empty( $filters['no_product'] ) ) {
+			$where[] = 'product_id IS NULL';
+		} elseif ( ! empty( $filters['product_id'] ) ) {
+			$where[]  = 'product_id = %d';
+			$params[] = (int) $filters['product_id'];
+		}
+
+		$where_sql = $where ? ( 'WHERE ' . implode( ' AND ', $where ) ) : '';
+
+		$items = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} {$where_sql} ORDER BY id DESC LIMIT %d OFFSET %d",
+				array_merge( $params, array( $per_page, $offset ) )
+			)
+		);
+
+		$total_sql = "SELECT COUNT(*) FROM {$table} {$where_sql}";
+		$total     = $params
+			? (int) $wpdb->get_var( $wpdb->prepare( $total_sql, $params ) )
+			: (int) $wpdb->get_var( $total_sql );
 
 		return array(
 			'items' => $items,
 			'total' => $total,
+		);
+	}
+
+	/**
+	 * Soft-deletes a serial number by setting its status to Deleted, kept for
+	 * audit/recoverability rather than actually removing the row. Needs no
+	 * special handling elsewhere: Available-counting queries already filter
+	 * for `status = 'available'` specifically, so a deleted row is naturally
+	 * excluded, exactly like Unavailable is today.
+	 */
+	public static function mark_deleted( int $id ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			self::table_name(),
+			array( 'status' => Status::DELETED ),
+			array( 'id' => $id ),
+			array( '%s' ),
+			array( '%d' )
 		);
 	}
 }

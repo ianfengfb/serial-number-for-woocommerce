@@ -60,14 +60,16 @@ includes/
   Plugin.php                        Singleton; wires up free + Pro features on init()
   Licensing.php                     is_pro_active() gate (see above)
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
-  Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/bulk-generate routing)
+  Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/delete/
+                                     bulk-generate routing; list view has a by-product / no-product filter)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen rules)
   Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, unlabeled Free area plus a "Pro Features"
                                      area (see Free/Pro architecture rules above for why the Pro controls'
                                      disabled/teaser markup lives here rather than under Pro/)
   Admin/SerialNumbers/
-    Repository.php                  $wpdb CRUD/search against the snw_serial_numbers table
-    ListTable.php                   WP_List_Table: search + paginated list, hover row action to Edit
+    Repository.php                  $wpdb CRUD/search (with optional product/no-product filters) against
+                                     the snw_serial_numbers table
+    ListTable.php                   WP_List_Table: search + paginated list, hover row actions to Edit/Delete
     FormController.php              Add New / Edit form render + validation + save
     Status.php                      Serial number lifecycle statuses: values, labels, configured default
     Generator.php                   Builds a random serial from the configured (or per-call override) rules
@@ -104,6 +106,13 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   - `expired` — past `expires_at`, no longer valid.
   - `unavailable` — deliberately withheld (revoked/refunded/faulty/reserved);
     never handed out but kept on record.
+  - `deleted` — soft-deleted via the list table's Delete row action. A normal
+    selectable status like any other (so it's editable back to something
+    else too), kept rather than hard-deleted for audit/recoverability.
+    Needs no special exclusion anywhere: Available-counting queries
+    (`count_available()`, `claim_available()`) already filter for
+    `status = 'available'` specifically, so a deleted row falls out of them
+    the same way an Unavailable one already does.
 
   Always store/compare the lowercase keys (`Status::AVAILABLE` etc.); labels
   from `Status::all()` / `Status::label()` are translated display strings only.
