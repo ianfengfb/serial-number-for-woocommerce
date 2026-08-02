@@ -31,6 +31,8 @@ final class ProductTab {
 
 	const CUSTOM_CHARSET_META_KEY = '_snw_custom_charset';
 
+	const WARRANTY_ENABLED_META_KEY = '_snw_warranty_enabled';
+
 	public function __construct() {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'add_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'render_panel' ) );
@@ -128,6 +130,33 @@ final class ProductTab {
 						<?php
 						woocommerce_wp_checkbox(
 							array(
+								'id'          => self::WARRANTY_ENABLED_META_KEY,
+								'label'       => __( 'Enable warranty for this product', 'serial-number-for-woocommerce' ),
+								'description' => __( 'Tracks a warranty against each serial number assigned for this product.', 'serial-number-for-woocommerce' ),
+								'desc_tip'    => true,
+								'value'       => get_post_meta( $post->ID, self::WARRANTY_ENABLED_META_KEY, true ),
+							)
+						);
+						?>
+					<?php else : ?>
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::WARRANTY_ENABLED_META_KEY ); ?>">
+								<?php esc_html_e( 'Enable warranty for this product', 'serial-number-for-woocommerce' ); ?>
+							</label>
+							<input
+								type="checkbox"
+								id="<?php echo esc_attr( self::WARRANTY_ENABLED_META_KEY ); ?>"
+								disabled
+								<?php checked( get_post_meta( $post->ID, self::WARRANTY_ENABLED_META_KEY, true ), 'yes' ); ?>
+							/>
+							<?php echo wc_help_tip( __( 'Upgrade to Pro to track a warranty against each serial number assigned for this product.', 'serial-number-for-woocommerce' ) ); ?>
+						</p>
+					<?php endif; ?>
+
+					<?php if ( $is_pro ) : ?>
+						<?php
+						woocommerce_wp_checkbox(
+							array(
 								'id'          => self::CUSTOM_RULE_ENABLED_META_KEY,
 								'label'       => __( 'Use a custom auto-generation rule for this product', 'serial-number-for-woocommerce' ),
 								'description' => __( 'Overrides the global prefix/suffix/character-set/length rule from WooCommerce > Settings > Serial Numbers for this product only.', 'serial-number-for-woocommerce' ),
@@ -208,7 +237,7 @@ final class ProductTab {
 					</div>
 
 					<p class="form-field">
-						<label for="snw-bulk-generate-amount"><?php esc_html_e( 'Bulk generate for this product', 'serial-number-for-woocommerce' ); ?></label>
+						<label for="snw-bulk-generate-amount"><?php esc_html_e( 'Bulk generate SN(s)', 'serial-number-for-woocommerce' ); ?></label>
 						<input
 							type="number"
 							id="snw-bulk-generate-amount"
@@ -389,6 +418,9 @@ final class ProductTab {
 
 		$custom_rule_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::CUSTOM_RULE_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::CUSTOM_RULE_ENABLED_META_KEY, $custom_rule_enabled );
+
+		$warranty_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::WARRANTY_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
+		update_post_meta( $product_id, self::WARRANTY_ENABLED_META_KEY, $warranty_enabled );
 
 		// The rule field values themselves are kept even while the checkbox is
 		// off, so re-enabling it later doesn't lose what was typed in — only

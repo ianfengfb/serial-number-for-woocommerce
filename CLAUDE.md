@@ -92,6 +92,7 @@ includes/
     Export/Exporter.php             Pro: streams the (optionally filtered) list as a CSV via admin_post
     Import/Controller.php           Pro: CSV import page — upload+parse, transient-backed preview, commit
     Import/RowParser.php            Pro: pure per-row parsing/validation shared by preview and commit
+    Warranty/Warranty.php           Pro: starting point for per-product warranty tracking (opt-in checkbox only so far)
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -137,13 +138,15 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
 
 - Per-product opt-in is the `_snw_enabled` post meta (`yes`/`no`) on the parent
   product — `ProductTab::META_KEY`. `_snw_manage_stock`
-  (`ProductTab::MANAGE_STOCK_META_KEY`) and `_snw_custom_rule_enabled`
-  (`ProductTab::CUSTOM_RULE_ENABLED_META_KEY`) are further dependent
-  per-product meta, both Pro-gated — `ProductTab::save()` never persists
-  either as `yes` without a license — see Stock sync and Custom generation
-  rules below. The meta-key constants live on the Free `ProductTab` class
-  (not the Pro classes that act on them) precisely so Free code can render
-  their teaser markup and gate their persistence without referencing Pro.
+  (`ProductTab::MANAGE_STOCK_META_KEY`), `_snw_custom_rule_enabled`
+  (`ProductTab::CUSTOM_RULE_ENABLED_META_KEY`), and `_snw_warranty_enabled`
+  (`ProductTab::WARRANTY_ENABLED_META_KEY`) are further dependent
+  per-product meta, all Pro-gated — `ProductTab::save()` never persists
+  any of them as `yes` without a license — see Stock sync, Custom generation
+  rules, and Warranty below. The meta-key constants live on the Free
+  `ProductTab` class (not the Pro classes that act on them) precisely so
+  Free code can render their teaser markup and gate their persistence
+  without referencing Pro.
 - Serials handed to an order live on the line item, not the order: the
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
@@ -204,10 +207,23 @@ even while `_snw_custom_rule_enabled` is off, so re-checking it later
 doesn't lose what was typed — `is_enabled_for_product()` alone gates whether
 they take effect, same pattern as `StockSync`.
 
-The product tab's own "Bulk generate for this product" button always reads
-the product's *saved* meta at generate time, not whatever's currently typed
+The product tab's own "Bulk generate SN(s)" button always reads the
+product's *saved* meta at generate time, not whatever's currently typed
 into the rule fields — the tooltip says as much, so save the product first
 if the rule was just changed.
+
+## Warranty (Pro)
+
+`Pro\Warranty\Warranty` is a starting point, not a finished feature: an
+"Enable warranty for this product" checkbox on the Serial Number tab's Pro
+Features area, gated and persisted the same way as `MANAGE_STOCK_META_KEY`
+and `CUSTOM_RULE_ENABLED_META_KEY` (`ProductTab::save()` never persists it
+as `yes` without a license). `Warranty::is_enabled_for_product()` mirrors
+`StockSync`'s and `CustomRules`' own version of that method, so later
+warranty features (duration/terms, and whatever effect they have on
+individual serial numbers) have a single existing place to gate from,
+rather than reinventing the check. Nothing reads this meta yet beyond the
+checkbox itself.
 
 ## CSV export (Pro)
 
