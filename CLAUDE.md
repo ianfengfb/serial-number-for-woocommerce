@@ -69,7 +69,8 @@ includes/
   Admin/SerialNumbers/
     Repository.php                  $wpdb CRUD/search (with optional product/no-product filters) against
                                      the snw_serial_numbers table
-    ListTable.php                   WP_List_Table: search + paginated list, hover row actions to Edit/Delete
+    ListTable.php                   WP_List_Table: search + paginated list, hover row actions to Edit/Delete,
+                                     checkbox column + a "Delete" bulk action
     FormController.php              Add New / Edit form render + validation + save
     Status.php                      Serial number lifecycle statuses: values, labels, configured default
     Generator.php                   Builds a random serial from the configured (or per-call override) rules
@@ -106,13 +107,16 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   - `expired` — past `expires_at`, no longer valid.
   - `unavailable` — deliberately withheld (revoked/refunded/faulty/reserved);
     never handed out but kept on record.
-  - `deleted` — soft-deleted via the list table's Delete row action. A normal
-    selectable status like any other (so it's editable back to something
-    else too), kept rather than hard-deleted for audit/recoverability.
-    Needs no special exclusion anywhere: Available-counting queries
-    (`count_available()`, `claim_available()`) already filter for
-    `status = 'available'` specifically, so a deleted row falls out of them
-    the same way an Unavailable one already does.
+  - `deleted` — soft-deleted via the list table's single-row Delete action or
+    its "Delete" bulk action. A normal selectable status like any other (so
+    it's editable back to something else too), kept rather than hard-deleted
+    for audit/recoverability. Needs no special exclusion anywhere:
+    Available-counting queries (`count_available()`, `claim_available()`)
+    already filter for `status = 'available'` specifically, so a deleted row
+    falls out of them the same way an Unavailable one already does. The bulk
+    action's key is `bulk_delete`, not `delete`, specifically so its
+    `$_REQUEST['action']` value can't collide with the single-row Delete
+    link's own `action=delete&id=`.
 
   Always store/compare the lowercase keys (`Status::AVAILABLE` etc.); labels
   from `Status::all()` / `Status::label()` are translated display strings only.

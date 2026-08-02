@@ -162,6 +162,56 @@ final class Menu {
 		exit;
 	}
 
+	/**
+	 * Soft-deletes every selected serial number (see handle_delete()) and
+	 * resyncs stock once per distinct product among them.
+	 */
+	private function handle_bulk_delete(): void {
+		check_admin_referer( 'bulk-serial_numbers' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'serial-number-for-woocommerce' ) );
+		}
+
+		$ids = isset( $_REQUEST['serial_ids'] ) && is_array( $_REQUEST['serial_ids'] )
+			? array_filter( array_map( 'absint', $_REQUEST['serial_ids'] ) )
+			: array();
+
+		$product_ids = array();
+
+		foreach ( $ids as $id ) {
+			$serial = Repository::find( $id );
+
+			if ( ! $serial ) {
+				continue;
+			}
+
+			Repository::mark_deleted( $id );
+
+			if ( $serial->product_id ) {
+				$product_ids[ (int) $serial->product_id ] = true;
+			}
+		}
+
+		if ( Licensing::is_pro_active() ) {
+			foreach ( array_keys( $product_ids ) as $product_id ) {
+				StockSync::sync( $product_id );
+			}
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'       => 'serial-number-for-woocommerce',
+					'snw_notice' => 'bulk_deleted',
+					'snw_count'  => count( $ids ),
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
 	private function render_bulk_generate_teaser(): void {
 		$back_url = add_query_arg( array( 'page' => 'serial-number-for-woocommerce' ), admin_url( 'admin.php' ) );
 		?>
@@ -178,6 +228,12 @@ final class Menu {
 
 	private function render_list(): void {
 		$list_table = new ListTable();
+
+		if ( 'bulk_delete' === $list_table->current_action() ) {
+			$this->handle_bulk_delete();
+			return;
+		}
+
 		$list_table->prepare_items();
 
 		$add_new_url = add_query_arg(
@@ -238,6 +294,18 @@ final class Menu {
 			<?php elseif ( isset( $_GET['snw_notice'] ) && 'deleted' === $_GET['snw_notice'] ) : ?>
 				<div class="notice notice-success is-dismissible">
 					<p><?php esc_html_e( 'Serial number deleted.', 'serial-number-for-woocommerce' ); ?></p>
+				</div>
+			<?php elseif ( isset( $_GET['snw_notice'] ) && 'bulk_deleted' === $_GET['snw_notice'] ) : ?>
+				<div class="notice notice-success is-dismissible">
+					<p>
+						<?php
+						printf(
+							/* translators: %d: number of serial numbers deleted */
+							esc_html__( '%d serial numbers deleted.', 'serial-number-for-woocommerce' ),
+							isset( $_GET['snw_count'] ) ? absint( $_GET['snw_count'] ) : 0
+						);
+						?>
+					</p>
 				</div>
 			<?php endif; ?>
 

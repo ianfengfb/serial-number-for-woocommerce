@@ -24,6 +24,7 @@ final class ListTable extends \WP_List_Table {
 
 	public function get_columns(): array {
 		return array(
+			'cb'            => '<input type="checkbox" />',
 			'serial_number' => __( 'Serial Number', 'serial-number-for-woocommerce' ),
 			'status'        => __( 'Status', 'serial-number-for-woocommerce' ),
 			'product'       => __( 'Product', 'serial-number-for-woocommerce' ),
@@ -31,6 +32,16 @@ final class ListTable extends \WP_List_Table {
 			'created_at'    => __( 'Created On', 'serial-number-for-woocommerce' ),
 			'expires_at'    => __( 'Expires On', 'serial-number-for-woocommerce' ),
 		);
+	}
+
+	protected function get_bulk_actions(): array {
+		return array(
+			'bulk_delete' => __( 'Delete', 'serial-number-for-woocommerce' ),
+		);
+	}
+
+	public function column_cb( $item ): string {
+		return sprintf( '<input type="checkbox" name="serial_ids[]" value="%d" />', (int) $item->id );
 	}
 
 	public function prepare_items(): void {
