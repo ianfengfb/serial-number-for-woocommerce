@@ -47,6 +47,7 @@ class ComposerStaticInit71078b64631c62ac7ba6e3702d200d7c
         'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => __DIR__ . '/../..' . '/includes/Pro/StockSync/StockSync.php',
         'SerialNumberForWooCommerce\\Pro\\Warranty\\ActivationTrigger' => __DIR__ . '/../..' . '/includes/Pro/Warranty/ActivationTrigger.php',
         'SerialNumberForWooCommerce\\Pro\\Warranty\\ExpiryChecker' => __DIR__ . '/../..' . '/includes/Pro/Warranty/ExpiryChecker.php',
+        'SerialNumberForWooCommerce\\Pro\\Warranty\\Extension' => __DIR__ . '/../..' . '/includes/Pro/Warranty/Extension.php',
         'SerialNumberForWooCommerce\\Pro\\Warranty\\Warranty' => __DIR__ . '/../..' . '/includes/Pro/Warranty/Warranty.php',
     );
 

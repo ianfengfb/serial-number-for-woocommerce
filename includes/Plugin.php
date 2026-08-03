@@ -33,6 +33,7 @@ final class Plugin {
 			new Pro\Export\Exporter();
 			new Pro\Warranty\ActivationTrigger();
 			new Pro\Warranty\ExpiryChecker();
+			new Pro\Warranty\Extension();
 		}
 
 		add_filter(

@@ -37,6 +37,14 @@ final class ProductTab {
 
 	const WARRANTY_PERIOD_META_KEY = '_snw_warranty_period';
 
+	const WARRANTY_EXTENSION_ENABLED_META_KEY = '_snw_warranty_extension_enabled';
+
+	const WARRANTY_EXTENSION_LENGTH_META_KEY = '_snw_warranty_extension_length';
+
+	const WARRANTY_EXTENSION_PERIOD_META_KEY = '_snw_warranty_extension_period';
+
+	const WARRANTY_EXTENSION_PRICE_META_KEY = '_snw_warranty_extension_price';
+
 	public function __construct() {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'add_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'render_panel' ) );
@@ -287,6 +295,67 @@ final class ProductTab {
 							</select>
 							<?php echo wc_help_tip( __( 'How long the warranty lasts for each serial number of this product.', 'serial-number-for-woocommerce' ) ); ?>
 						</p>
+
+						<?php if ( $is_pro ) : ?>
+							<?php
+							woocommerce_wp_checkbox(
+								array(
+									'id'          => self::WARRANTY_EXTENSION_ENABLED_META_KEY,
+									'label'       => __( 'Enable warranty extension', 'serial-number-for-woocommerce' ),
+									'description' => __( 'Lets customers pay to extend this product\'s warranty when they purchase it.', 'serial-number-for-woocommerce' ),
+									'desc_tip'    => true,
+									'value'       => get_post_meta( $post->ID, self::WARRANTY_EXTENSION_ENABLED_META_KEY, true ),
+								)
+							);
+							?>
+						<?php else : ?>
+							<p class="form-field">
+								<label for="<?php echo esc_attr( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>">
+									<?php esc_html_e( 'Enable warranty extension', 'serial-number-for-woocommerce' ); ?>
+								</label>
+								<input
+									type="checkbox"
+									id="<?php echo esc_attr( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>"
+									disabled
+									<?php checked( get_post_meta( $post->ID, self::WARRANTY_EXTENSION_ENABLED_META_KEY, true ), 'yes' ); ?>
+								/>
+								<?php echo wc_help_tip( __( 'Upgrade to Pro to let customers pay to extend this product\'s warranty.', 'serial-number-for-woocommerce' ) ); ?>
+							</p>
+						<?php endif; ?>
+
+						<div id="snw-warranty-extension-fields">
+							<p class="form-field">
+								<label for="<?php echo esc_attr( self::WARRANTY_EXTENSION_LENGTH_META_KEY ); ?>"><?php esc_html_e( 'Extension length', 'serial-number-for-woocommerce' ); ?></label>
+								<input
+									type="number"
+									id="<?php echo esc_attr( self::WARRANTY_EXTENSION_LENGTH_META_KEY ); ?>"
+									min="1"
+									step="1"
+									class="small-text"
+									value="<?php echo esc_attr( get_post_meta( $post->ID, self::WARRANTY_EXTENSION_LENGTH_META_KEY, true ) ?: '1' ); ?>"
+									<?php disabled( ! $is_pro ); ?>
+								/>
+								<select id="<?php echo esc_attr( self::WARRANTY_EXTENSION_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+									<?php $extension_period = get_post_meta( $post->ID, self::WARRANTY_EXTENSION_PERIOD_META_KEY, true ) ?: 'year'; ?>
+									<option value="month" <?php selected( $extension_period, 'month' ); ?>><?php esc_html_e( 'Month(s)', 'serial-number-for-woocommerce' ); ?></option>
+									<option value="year" <?php selected( $extension_period, 'year' ); ?>><?php esc_html_e( 'Year(s)', 'serial-number-for-woocommerce' ); ?></option>
+								</select>
+								<?php echo wc_help_tip( __( 'How much extra time the extension adds on top of the warranty length above.', 'serial-number-for-woocommerce' ) ); ?>
+							</p>
+							<p class="form-field">
+								<label for="<?php echo esc_attr( self::WARRANTY_EXTENSION_PRICE_META_KEY ); ?>"><?php esc_html_e( 'Extension price', 'serial-number-for-woocommerce' ); ?></label>
+								<input
+									type="number"
+									id="<?php echo esc_attr( self::WARRANTY_EXTENSION_PRICE_META_KEY ); ?>"
+									min="0"
+									step="0.01"
+									class="small-text"
+									value="<?php echo esc_attr( get_post_meta( $post->ID, self::WARRANTY_EXTENSION_PRICE_META_KEY, true ) ?: '0' ); ?>"
+									<?php disabled( ! $is_pro ); ?>
+								/>
+								<?php echo wc_help_tip( __( 'Added to the product price when a customer chooses to purchase the extension.', 'serial-number-for-woocommerce' ) ); ?>
+							</p>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -314,6 +383,12 @@ final class ProductTab {
 				function snwToggleWarrantyFields() {
 					$( '#snw-warranty-fields' ).toggle(
 						snwIsPro && $( '#<?php echo esc_js( self::WARRANTY_ENABLED_META_KEY ); ?>' ).is( ':checked' )
+					);
+				}
+
+				function snwToggleWarrantyExtensionFields() {
+					$( '#snw-warranty-extension-fields' ).toggle(
+						snwIsPro && $( '#<?php echo esc_js( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>' ).is( ':checked' )
 					);
 				}
 
@@ -358,10 +433,12 @@ final class ProductTab {
 
 				$( '#<?php echo esc_js( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleCustomRuleFields );
 				$( '#<?php echo esc_js( self::WARRANTY_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleWarrantyFields );
+				$( '#<?php echo esc_js( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleWarrantyExtensionFields );
 
 				snwToggleConditionalFields();
 				snwToggleCustomRuleFields();
 				snwToggleWarrantyFields();
+				snwToggleWarrantyExtensionFields();
 				snwToggleStockQuantityLock();
 
 				$( '#snw-add-bulk-serials' ).on( 'click', function ( e ) {
@@ -486,6 +563,9 @@ final class ProductTab {
 		$warranty_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::WARRANTY_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::WARRANTY_ENABLED_META_KEY, $warranty_enabled );
 
+		$warranty_extension_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::WARRANTY_EXTENSION_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
+		update_post_meta( $product_id, self::WARRANTY_EXTENSION_ENABLED_META_KEY, $warranty_extension_enabled );
+
 		// The rule field values themselves are kept even while the checkbox is
 		// off, so re-enabling it later doesn't lose what was typed in — only
 		// CustomRules::is_enabled_for_product() gates whether they take effect.
@@ -515,6 +595,15 @@ final class ProductTab {
 
 			$warranty_period = isset( $_POST[ self::WARRANTY_PERIOD_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::WARRANTY_PERIOD_META_KEY ] ) ) : '';
 			update_post_meta( $product_id, self::WARRANTY_PERIOD_META_KEY, in_array( $warranty_period, array( 'month', 'year' ), true ) ? $warranty_period : 'year' );
+
+			$extension_length = isset( $_POST[ self::WARRANTY_EXTENSION_LENGTH_META_KEY ] ) ? absint( $_POST[ self::WARRANTY_EXTENSION_LENGTH_META_KEY ] ) : 0;
+			update_post_meta( $product_id, self::WARRANTY_EXTENSION_LENGTH_META_KEY, $extension_length ? (string) $extension_length : '1' );
+
+			$extension_period = isset( $_POST[ self::WARRANTY_EXTENSION_PERIOD_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::WARRANTY_EXTENSION_PERIOD_META_KEY ] ) ) : '';
+			update_post_meta( $product_id, self::WARRANTY_EXTENSION_PERIOD_META_KEY, in_array( $extension_period, array( 'month', 'year' ), true ) ? $extension_period : 'year' );
+
+			$extension_price = isset( $_POST[ self::WARRANTY_EXTENSION_PRICE_META_KEY ] ) ? wc_format_decimal( wp_unslash( $_POST[ self::WARRANTY_EXTENSION_PRICE_META_KEY ] ) ) : '0';
+			update_post_meta( $product_id, self::WARRANTY_EXTENSION_PRICE_META_KEY, $extension_price );
 		}
 
 		// Fallback for whatever's still in the bulk-add textarea at save time —

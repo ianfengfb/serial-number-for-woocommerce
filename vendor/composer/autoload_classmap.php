@@ -32,5 +32,6 @@ return array(
     'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => $baseDir . '/includes/Pro/StockSync/StockSync.php',
     'SerialNumberForWooCommerce\\Pro\\Warranty\\ActivationTrigger' => $baseDir . '/includes/Pro/Warranty/ActivationTrigger.php',
     'SerialNumberForWooCommerce\\Pro\\Warranty\\ExpiryChecker' => $baseDir . '/includes/Pro/Warranty/ExpiryChecker.php',
+    'SerialNumberForWooCommerce\\Pro\\Warranty\\Extension' => $baseDir . '/includes/Pro/Warranty/Extension.php',
     'SerialNumberForWooCommerce\\Pro\\Warranty\\Warranty' => $baseDir . '/includes/Pro/Warranty/Warranty.php',
 );
