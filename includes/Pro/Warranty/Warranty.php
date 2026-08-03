@@ -4,6 +4,7 @@ namespace SerialNumberForWooCommerce\Pro\Warranty;
 use SerialNumberForWooCommerce\Admin\Products\ProductTab;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Orders\Assigner;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -59,11 +60,29 @@ final class Warranty {
 			return false;
 		}
 
-		$duration    = self::duration_for_product( (int) $serial->product_id );
-		$expires_ts  = strtotime( '+' . $duration['length'] . ' ' . $duration['period'], current_time( 'timestamp' ) );
+		$months = self::duration_in_months( self::duration_for_product( (int) $serial->product_id ) );
+		$order  = $serial->order_id ? wc_get_order( $serial->order_id ) : false;
+
+		if ( $order instanceof \WC_Order ) {
+			$item = Assigner::find_item_for_serial( $order, $serial_id );
+			$extension = $item ? Extension::duration_for_order_item( $item ) : null;
+
+			if ( $extension ) {
+				$months += self::duration_in_months( $extension );
+			}
+		}
+
+		$expires_ts = strtotime( "+{$months} months", current_time( 'timestamp' ) );
 
 		Repository::activate( $serial_id, gmdate( 'Y-m-d H:i:s', $expires_ts ) );
 
 		return true;
+	}
+
+	/**
+	 * @param array{length: int, period: string} $duration
+	 */
+	private static function duration_in_months( array $duration ): int {
+		return $duration['length'] * ( 'year' === $duration['period'] ? 12 : 1 );
 	}
 }

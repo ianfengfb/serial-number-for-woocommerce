@@ -160,6 +160,21 @@ final class Assigner {
 	}
 
 	/**
+	 * The reverse of serial_ids(): which of an order's line items holds a
+	 * given serial. Used by Warranty::activate_serial() (Pro) to look up an
+	 * order-item-level warranty extension for a specific serial.
+	 */
+	public static function find_item_for_serial( \WC_Order $order, int $serial_id ): ?\WC_Order_Item_Product {
+		foreach ( $order->get_items() as $item ) {
+			if ( $item instanceof \WC_Order_Item_Product && in_array( $serial_id, self::serial_ids( $item ), true ) ) {
+				return $item;
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Backs the "Add Serial Number" control on the admin order edit screen,
 	 * for orders whose item never got auto-assigned (e.g. the product wasn't
 	 * serial-number-enabled yet at checkout):
