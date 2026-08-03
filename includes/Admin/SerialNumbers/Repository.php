@@ -335,4 +335,63 @@ final class Repository {
 			array( '%d' )
 		);
 	}
+
+	/**
+	 * Marks a serial number Activated (warranty starting now), with the
+	 * given expiry — a generic "set these three columns" primitive, agnostic
+	 * of how $expires_at was computed, so it's reusable by whichever
+	 * activation trigger calls it (order-completed, delayed, or a future
+	 * manual customer flow).
+	 *
+	 * @param string $expires_at MySQL datetime string.
+	 */
+	public static function activate( int $id, string $expires_at ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			self::table_name(),
+			array(
+				'status'       => Status::ACTIVATED,
+				'activated_at' => current_time( 'mysql' ),
+				'expires_at'   => $expires_at,
+			),
+			array( 'id' => $id ),
+			array( '%s', '%s', '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Marks a serial number Expired. Leaves activated_at/expires_at alone —
+	 * this only flips the terminal status, backing the warranty-expiry cron.
+	 */
+	public static function expire( int $id ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			self::table_name(),
+			array( 'status' => Status::EXPIRED ),
+			array( 'id' => $id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Activated serial numbers whose expiry has passed — candidates for the
+	 * warranty-expiry cron to flip to Expired.
+	 */
+	public static function find_activated_past_expiry(): array {
+		global $wpdb;
+
+		$table = self::table_name();
+
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE status = %s AND expires_at IS NOT NULL AND expires_at <= %s",
+				Status::ACTIVATED,
+				current_time( 'mysql' )
+			)
+		);
+	}
 }
