@@ -10,7 +10,8 @@ defined( 'ABSPATH' ) || exit;
  * order edit screen (`woocommerce_after_order_itemmeta`, see ItemDisplay),
  * so one hook covers all three. Each of the two contexts (emails vs. the
  * order-details page) has its own on/off setting in WooCommerce > Settings >
- * Serial Numbers, both defaulting to on.
+ * Serial Numbers, both defaulting to on. The order-details page also shows
+ * each serial's expiry date, if it has one — emails stay serial-number-only.
  */
 final class CustomerItemDisplay {
 
@@ -53,24 +54,49 @@ final class CustomerItemDisplay {
 			return;
 		}
 
-		$serial_numbers = Assigner::serial_numbers( $item );
+		$serials = Assigner::serial_rows( $item );
 
-		if ( empty( $serial_numbers ) ) {
+		if ( empty( $serials ) ) {
 			return;
 		}
 
-		$label = _n( 'Serial Number', 'Serial Numbers', count( $serial_numbers ), 'serial-number-for-woocommerce' );
+		$label       = _n( 'Serial Number', 'Serial Numbers', count( $serials ), 'serial-number-for-woocommerce' );
+		$show_expiry = ! $this->in_email;
+
+		$parts = array();
+
+		foreach ( $serials as $serial ) {
+			$parts[] = $this->format_serial( $serial, $show_expiry, $plain_text );
+		}
 
 		if ( $plain_text ) {
 			// Plain-text context, not HTML — no entity-escaping here.
-			echo "\n" . $label . ': ' . implode( ', ', $serial_numbers ) . "\n";
+			echo "\n" . $label . ': ' . implode( ', ', $parts ) . "\n";
 			return;
 		}
 		?>
 		<p class="snw-order-item-serials" style="margin: 4px 0 0; font-size: small; color: #767676;">
 			<strong><?php echo esc_html( $label ); ?>:</strong>
-			<?php echo esc_html( implode( ', ', $serial_numbers ) ); ?>
+			<?php echo implode( ', ', $parts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped in format_serial(). ?>
 		</p>
 		<?php
+	}
+
+	/**
+	 * @param object $serial A snw_serial_numbers row.
+	 */
+	private function format_serial( object $serial, bool $show_expiry, bool $plain_text ): string {
+		if ( ! $show_expiry || ! $serial->expires_at ) {
+			return $plain_text ? $serial->serial_number : esc_html( $serial->serial_number );
+		}
+
+		$formatted = sprintf(
+			/* translators: 1: serial number, 2: expiry date */
+			__( '%1$s (expires %2$s)', 'serial-number-for-woocommerce' ),
+			$serial->serial_number,
+			date_i18n( get_option( 'date_format' ), strtotime( $serial->expires_at ) )
+		);
+
+		return $plain_text ? $formatted : esc_html( $formatted );
 	}
 }

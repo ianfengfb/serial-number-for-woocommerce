@@ -141,22 +141,36 @@ final class Assigner {
 	}
 
 	/**
-	 * Serial number strings assigned to a line item, resolved from
-	 * serial_ids() — shared by every read-only display of an item's
-	 * serials (admin order edit screen, customer emails/account view).
+	 * Full rows for the serial numbers assigned to a line item, resolved
+	 * from serial_ids() — shared by every read-only display of an item's
+	 * serials that needs more than just the serial_number string (e.g. the
+	 * expiry date on the customer-facing order details page).
 	 */
-	public static function serial_numbers( \WC_Order_Item_Product $item ): array {
-		$serial_numbers = array();
+	public static function serial_rows( \WC_Order_Item_Product $item ): array {
+		$rows = array();
 
 		foreach ( self::serial_ids( $item ) as $serial_id ) {
 			$serial = Repository::find( $serial_id );
 
 			if ( $serial ) {
-				$serial_numbers[] = $serial->serial_number;
+				$rows[] = $serial;
 			}
 		}
 
-		return $serial_numbers;
+		return $rows;
+	}
+
+	/**
+	 * Serial number strings assigned to a line item — the admin order edit
+	 * screen and customer emails only need the plain string, not the full row.
+	 */
+	public static function serial_numbers( \WC_Order_Item_Product $item ): array {
+		return array_map(
+			static function ( $serial ) {
+				return $serial->serial_number;
+			},
+			self::serial_rows( $item )
+		);
 	}
 
 	/**
