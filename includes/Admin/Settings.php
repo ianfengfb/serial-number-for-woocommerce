@@ -2,6 +2,7 @@
 namespace SerialNumberForWooCommerce\Admin;
 
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
+use SerialNumberForWooCommerce\Licensing;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,6 +28,8 @@ final class Settings extends \WC_Settings_Page {
 	 * Settings shown on the tab's default (only) section.
 	 */
 	public function get_settings_for_default_section(): array {
+		$is_pro = Licensing::is_pro_active();
+
 		return array(
 			array(
 				'title' => __( 'General', 'serial-number-for-woocommerce' ),
@@ -128,6 +131,46 @@ final class Settings extends \WC_Settings_Page {
 			array(
 				'type' => 'sectionend',
 				'id'   => 'snw_customer_visibility_settings',
+			),
+
+			array(
+				'title' => __( 'Warranty (Pro)', 'serial-number-for-woocommerce' ),
+				'type'  => 'title',
+				'desc'  => __( 'Controls when a serial number\'s warranty starts counting down, for products with warranty tracking enabled on their Serial Number tab. Requires a license.', 'serial-number-for-woocommerce' ),
+				'id'    => 'snw_warranty_settings',
+			),
+			array(
+				'title'             => __( 'Activation trigger', 'serial-number-for-woocommerce' ),
+				'desc'              => __( 'When a serial number\'s warranty starts.', 'serial-number-for-woocommerce' ),
+				'id'                => 'snw_warranty_activation_trigger',
+				'type'              => 'select',
+				'class'             => 'wc-enhanced-select',
+				'default'           => 'on_completed',
+				'options'           => array(
+					'on_completed'         => __( 'When the order is marked Completed', 'serial-number-for-woocommerce' ),
+					'days_after_completed' => __( 'A number of days after the order is marked Completed', 'serial-number-for-woocommerce' ),
+				),
+				'desc_tip'          => true,
+				'custom_attributes' => $is_pro ? array() : array( 'disabled' => 'disabled' ),
+			),
+			array(
+				'title'             => __( 'Grace period (days)', 'serial-number-for-woocommerce' ),
+				'desc'              => __( 'Only used when the trigger above is "A number of days after...". Warranty starts this many days after the order is marked Completed.', 'serial-number-for-woocommerce' ),
+				'id'                => 'snw_warranty_activation_days',
+				'type'              => 'number',
+				'default'           => 0,
+				'desc_tip'          => true,
+				'custom_attributes' => array_merge(
+					array(
+						'min'  => 0,
+						'step' => 1,
+					),
+					$is_pro ? array() : array( 'disabled' => 'disabled' )
+				),
+			),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'snw_warranty_settings',
 			),
 		);
 	}
