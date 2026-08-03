@@ -22,6 +22,43 @@ final class Settings extends \WC_Settings_Page {
 		$this->label = __( 'Serial Numbers', 'serial-number-for-woocommerce' );
 
 		parent::__construct();
+
+		add_action( 'admin_footer', array( $this, 'print_activation_trigger_script' ) );
+	}
+
+	/**
+	 * Hides the "Grace period (days)" row (and zeroes its value) while
+	 * "Activation trigger" isn't set to the days-after-completed option —
+	 * that field means nothing in "on order completed" mode. Targets fields
+	 * by their own ID and walks up to the nearest `<tr>` rather than
+	 * assuming a specific row class, so it doesn't depend on WooCommerce's
+	 * exact settings-table markup.
+	 */
+	public function print_activation_trigger_script(): void {
+		if ( ! isset( $_GET['page'], $_GET['tab'] ) || 'wc-settings' !== $_GET['page'] || $this->id !== $_GET['tab'] ) {
+			return;
+		}
+		?>
+		<script>
+		jQuery( function ( $ ) {
+			var $trigger = $( '#snw_warranty_activation_trigger' );
+			var $days    = $( '#snw_warranty_activation_days' );
+
+			function snwToggleActivationDays() {
+				var showDays = 'days_after_completed' === $trigger.val();
+
+				$days.closest( 'tr' ).toggle( showDays );
+
+				if ( ! showDays ) {
+					$days.val( 0 );
+				}
+			}
+
+			$trigger.on( 'change', snwToggleActivationDays );
+			snwToggleActivationDays();
+		} );
+		</script>
+		<?php
 	}
 
 	/**
