@@ -36,25 +36,28 @@ final class ItemDisplay {
 		}
 
 		/*
-		 * Always offered, not just when auto-assignment fell short — this is a
-		 * manual override for orders whose item never got assigned in the
+		 * A manual override for items that never got auto-assigned in the
 		 * first place (e.g. the product wasn't Serial Number-enabled yet at
-		 * checkout), and Assigner::add_manual_serial() decides row by row
+		 * checkout) — Assigner::add_manual_serial() decides row by row
 		 * whether a typed value creates, attaches to, or is rejected for this
-		 * item.
+		 * item. Hidden once the item already holds one serial per ordered
+		 * unit, since there's nothing left to add at that point.
 		 */
-		?>
-		<div class="snw-order-item-add-serial" style="margin-top: 6px;">
-			<input type="text" class="snw-add-serial-input" placeholder="<?php esc_attr_e( 'Add serial number&hellip;', 'serial-number-for-woocommerce' ); ?>" style="width: 160px;" />
-			<button
-				type="button"
-				class="button snw-add-serial-btn"
-				data-item-id="<?php echo esc_attr( $item_id ); ?>"
-				data-order-id="<?php echo esc_attr( $item->get_order_id() ); ?>"
-			><?php esc_html_e( 'Add Serial Number', 'serial-number-for-woocommerce' ); ?></button>
-			<span class="snw-add-serial-result" style="margin-left: 6px;"></span>
-		</div>
-		<?php
+		if ( count( $serial_numbers ) < $item->get_quantity() ) {
+			?>
+			<div class="snw-order-item-add-serial" style="margin-top: 6px;">
+				<input type="text" class="snw-add-serial-input" placeholder="<?php esc_attr_e( 'Add serial number&hellip;', 'serial-number-for-woocommerce' ); ?>" style="width: 160px;" />
+				<button
+					type="button"
+					class="button snw-add-serial-btn"
+					data-item-id="<?php echo esc_attr( $item_id ); ?>"
+					data-order-id="<?php echo esc_attr( $item->get_order_id() ); ?>"
+				><?php esc_html_e( 'Add Serial Number', 'serial-number-for-woocommerce' ); ?></button>
+				<span class="snw-add-serial-result" style="margin-left: 6px;"></span>
+			</div>
+			<?php
+		}
+
 		if ( ! $this->printed_styles ) {
 			$this->printed_styles = true;
 			?>

@@ -21,4 +21,22 @@ final class Warranty {
 			&& 'yes' === get_post_meta( $product_id, ProductTab::META_KEY, true )
 			&& 'yes' === get_post_meta( $product_id, ProductTab::WARRANTY_ENABLED_META_KEY, true );
 	}
+
+	/**
+	 * A product's configured warranty length, regardless of whether warranty
+	 * is actually enabled for it — callers that need to act on the duration
+	 * should check is_enabled_for_product() themselves first, same pattern as
+	 * CustomRules.
+	 *
+	 * @return array{length: int, period: string} period is 'month' or 'year'.
+	 */
+	public static function duration_for_product( int $product_id ): array {
+		$length = absint( get_post_meta( $product_id, ProductTab::WARRANTY_LENGTH_META_KEY, true ) );
+		$period = get_post_meta( $product_id, ProductTab::WARRANTY_PERIOD_META_KEY, true );
+
+		return array(
+			'length' => $length > 0 ? $length : 1,
+			'period' => in_array( $period, array( 'month', 'year' ), true ) ? $period : 'year',
+		);
+	}
 }

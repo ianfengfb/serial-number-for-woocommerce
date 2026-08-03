@@ -64,15 +64,14 @@ final class Ajax {
 			}
 		}
 
-		if ( $created ) {
-			StockSync::sync( $product_id );
-		}
+		$stock_quantity = $created ? StockSync::sync( $product_id ) : null;
 
 		wp_send_json_success(
 			array(
 				/* translators: %d: number of serial numbers generated */
-				'message' => sprintf( _n( '%d serial number generated.', '%d serial numbers generated.', $created, 'serial-number-for-woocommerce' ), $created ),
-				'created' => $created,
+				'message'        => sprintf( _n( '%d serial number generated.', '%d serial numbers generated.', $created, 'serial-number-for-woocommerce' ), $created ),
+				'created'        => $created,
+				'stock_quantity' => $stock_quantity,
 			)
 		);
 	}
