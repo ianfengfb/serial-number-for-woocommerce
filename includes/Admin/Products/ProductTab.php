@@ -33,6 +33,10 @@ final class ProductTab {
 
 	const WARRANTY_ENABLED_META_KEY = '_snw_warranty_enabled';
 
+	const WARRANTY_LENGTH_META_KEY = '_snw_warranty_length';
+
+	const WARRANTY_PERIOD_META_KEY = '_snw_warranty_period';
+
 	public function __construct() {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'add_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'render_panel' ) );
@@ -263,6 +267,27 @@ final class ProductTab {
 							<?php echo wc_help_tip( __( 'Upgrade to Pro to track a warranty against each serial number assigned for this product.', 'serial-number-for-woocommerce' ) ); ?>
 						</p>
 					<?php endif; ?>
+
+					<div id="snw-warranty-fields">
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::WARRANTY_LENGTH_META_KEY ); ?>"><?php esc_html_e( 'Warranty length', 'serial-number-for-woocommerce' ); ?></label>
+							<input
+								type="number"
+								id="<?php echo esc_attr( self::WARRANTY_LENGTH_META_KEY ); ?>"
+								min="1"
+								step="1"
+								class="small-text"
+								value="<?php echo esc_attr( get_post_meta( $post->ID, self::WARRANTY_LENGTH_META_KEY, true ) ?: '1' ); ?>"
+								<?php disabled( ! $is_pro ); ?>
+							/>
+							<select id="<?php echo esc_attr( self::WARRANTY_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+								<?php $warranty_period = get_post_meta( $post->ID, self::WARRANTY_PERIOD_META_KEY, true ) ?: 'year'; ?>
+								<option value="month" <?php selected( $warranty_period, 'month' ); ?>><?php esc_html_e( 'Month(s)', 'serial-number-for-woocommerce' ); ?></option>
+								<option value="year" <?php selected( $warranty_period, 'year' ); ?>><?php esc_html_e( 'Year(s)', 'serial-number-for-woocommerce' ); ?></option>
+							</select>
+							<?php echo wc_help_tip( __( 'How long the warranty lasts for each serial number of this product.', 'serial-number-for-woocommerce' ) ); ?>
+						</p>
+					</div>
 				</div>
 			</div>
 			<script>
@@ -284,6 +309,29 @@ final class ProductTab {
 					$( '#snw-custom-rule-fields' ).toggle(
 						snwIsPro && $( '#<?php echo esc_js( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>' ).is( ':checked' )
 					);
+				}
+
+				function snwToggleWarrantyFields() {
+					$( '#snw-warranty-fields' ).toggle(
+						snwIsPro && $( '#<?php echo esc_js( self::WARRANTY_ENABLED_META_KEY ); ?>' ).is( ':checked' )
+					);
+				}
+
+				/*
+				 * StockSync already wrote the new stock quantity to the DB by the
+				 * time the AJAX response comes back, but the #_stock field (part
+				 * of the Inventory tab, not ours) still shows whatever value the
+				 * page loaded with — so without this, the admin would see a stale
+				 * number until they save or refresh. Setting .val() directly
+				 * works even though the field is disabled; disabled only blocks
+				 * user input and form submission, not script changes.
+				 */
+				function snwApplyStockQuantity( stockQuantity ) {
+					if ( 'number' !== typeof stockQuantity ) {
+						return;
+					}
+
+					$( '#_stock' ).val( stockQuantity );
 				}
 
 				function snwToggleStockQuantityLock() {
@@ -309,9 +357,11 @@ final class ProductTab {
 					} );
 
 				$( '#<?php echo esc_js( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleCustomRuleFields );
+				$( '#<?php echo esc_js( self::WARRANTY_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleWarrantyFields );
 
 				snwToggleConditionalFields();
 				snwToggleCustomRuleFields();
+				snwToggleWarrantyFields();
 				snwToggleStockQuantityLock();
 
 				$( '#snw-add-bulk-serials' ).on( 'click', function ( e ) {
@@ -343,6 +393,7 @@ final class ProductTab {
 							var data = response.data;
 							$result.text( data.message );
 							$textarea.val( data.skipped && data.skipped.length ? data.skipped.join( "\n" ) : '' );
+							snwApplyStockQuantity( data.stock_quantity );
 						} )
 						.fail( function () {
 							$result.text( <?php echo wp_json_encode( __( 'Something went wrong.', 'serial-number-for-woocommerce' ) ); ?> );
@@ -384,6 +435,7 @@ final class ProductTab {
 							}
 
 							$result.text( response.data.message );
+							snwApplyStockQuantity( response.data.stock_quantity );
 						} )
 						.fail( function () {
 							$result.text( <?php echo wp_json_encode( __( 'Something went wrong.', 'serial-number-for-woocommerce' ) ); ?> );
@@ -454,6 +506,15 @@ final class ProductTab {
 
 			$charset = isset( $_POST[ self::CUSTOM_CHARSET_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::CUSTOM_CHARSET_META_KEY ] ) ) : '';
 			update_post_meta( $product_id, self::CUSTOM_CHARSET_META_KEY, in_array( $charset, array( 'alphanumeric', 'numeric', 'alpha' ), true ) ? $charset : '' );
+
+			// Same "keep the value even while disabled" treatment as the rule
+			// fields above — only Warranty::is_enabled_for_product() gates
+			// whether the length/period take effect.
+			$warranty_length = isset( $_POST[ self::WARRANTY_LENGTH_META_KEY ] ) ? absint( $_POST[ self::WARRANTY_LENGTH_META_KEY ] ) : 0;
+			update_post_meta( $product_id, self::WARRANTY_LENGTH_META_KEY, $warranty_length ? (string) $warranty_length : '1' );
+
+			$warranty_period = isset( $_POST[ self::WARRANTY_PERIOD_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::WARRANTY_PERIOD_META_KEY ] ) ) : '';
+			update_post_meta( $product_id, self::WARRANTY_PERIOD_META_KEY, in_array( $warranty_period, array( 'month', 'year' ), true ) ? $warranty_period : 'year' );
 		}
 
 		// Fallback for whatever's still in the bulk-add textarea at save time —
