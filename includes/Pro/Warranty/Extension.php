@@ -106,6 +106,17 @@ final class Extension {
 		return $cart_item_data;
 	}
 
+	/**
+	 * woocommerce_before_calculate_totals fires more than once per checkout
+	 * (cart/checkout display, then again during order processing at
+	 * payment) — always add the extension price on top of the product's
+	 * own original price, fetched fresh, rather than on top of whatever
+	 * $cart_item['data']->get_price() currently returns. That object is the
+	 * same in-memory instance across repeated calls within one request, so
+	 * adding onto its current (possibly already-adjusted) price would
+	 * compound the extension fee on every recalculation instead of applying
+	 * it once.
+	 */
 	public function adjust_price( \WC_Cart $cart ): void {
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
 			return;
@@ -116,11 +127,23 @@ final class Extension {
 				continue;
 			}
 
-			$price = self::price_for_product( $cart_item['product_id'] );
+			$extension_price = self::price_for_product( $cart_item['product_id'] );
 
-			if ( $price > 0 ) {
-				$cart_item['data']->set_price( $cart_item['data']->get_price() + $price );
+			if ( $extension_price <= 0 ) {
+				continue;
 			}
+
+			// A fresh lookup by the cart item's own ID (not the possibly-
+			// mutated $cart_item['data'] instance) — correct for both simple
+			// products and variations, since get_id() returns the variation
+			// ID for a WC_Product_Variation.
+			$original_product = wc_get_product( $cart_item['data']->get_id() );
+
+			if ( ! $original_product ) {
+				continue;
+			}
+
+			$cart_item['data']->set_price( (float) $original_product->get_price() + $extension_price );
 		}
 	}
 
