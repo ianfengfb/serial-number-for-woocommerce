@@ -31,6 +31,8 @@ final class Plugin {
 		if ( Licensing::is_pro_active() ) {
 			new Pro\CustomRules\Ajax();
 			new Pro\Export\Exporter();
+			new Pro\Warranty\ActivationTrigger();
+			new Pro\Warranty\ExpiryChecker();
 		}
 
 		add_filter(

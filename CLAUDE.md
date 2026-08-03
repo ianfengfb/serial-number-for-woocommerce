@@ -59,11 +59,13 @@ composer.json                       PSR-4 autoload (SerialNumberForWooCommerce\ 
 includes/
   Plugin.php                        Singleton; wires up free + Pro features on init()
   Licensing.php                     is_pro_active() gate (see above)
-  Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta
+  Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta.
+                                     Also register_deactivation_hook target: clears Warranty's cron events
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/delete/
                                      bulk-generate/import routing; list view has a by-product / no-product filter)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen
-                                     rules, customer-visibility toggles for emails/account order view)
+                                     rules, customer-visibility toggles for emails/account order view, Warranty
+                                     (Pro) activation-trigger settings)
   Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, unlabeled Free area plus a "Pro Features"
                                      area (see Free/Pro architecture rules above for why the Pro controls'
                                      disabled/teaser markup lives here rather than under Pro/)
@@ -96,7 +98,10 @@ includes/
     Export/Exporter.php             Pro: streams the (optionally filtered) list as a CSV via admin_post
     Import/Controller.php           Pro: CSV import page — upload+parse, transient-backed preview, commit
     Import/RowParser.php            Pro: pure per-row parsing/validation shared by preview and commit
-    Warranty/Warranty.php           Pro: starting point for per-product warranty tracking (opt-in checkbox + length/period so far)
+    Warranty/Warranty.php           Pro: per-product warranty config (opt-in, length/period) + activate_serial()
+    Warranty/ActivationTrigger.php  Pro: starts warranty on an order's eligible items when it's marked Completed
+                                     (immediately, or after a configured delay)
+    Warranty/ExpiryChecker.php      Pro: daily cron flipping Activated serials past their expires_at to Expired
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -109,9 +114,11 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
 
 - `{$wpdb->prefix}snw_serial_numbers` (created in `Install::activate()`): `id`,
   `serial_number` (unique), `status`, `product_id` (nullable), `order_id`
-  (nullable), `created_at`, `expires_at` (nullable). Product/order columns
-  store IDs only — always resolve via `wc_get_product()` / `wc_get_order()`
-  rather than joining WC's tables directly, so this keeps working under HPOS.
+  (nullable), `created_at`, `expires_at` (nullable), `activated_at`
+  (nullable — Pro Warranty only; when a serial's warranty started, set by
+  `Repository::activate()`). Product/order columns store IDs only — always
+  resolve via `wc_get_product()` / `wc_get_order()` rather than joining WC's
+  tables directly, so this keeps working under HPOS.
 - Status values live in `SerialNumbers\Status` — the single place to
   add/rename/reorder them. The lifecycle is:
   - `available` — in the pool, not tied to an order; the only status
@@ -248,9 +255,65 @@ the same way `#snw-custom-rule-fields` is) — a number input
 licensed regardless of whether the checkbox is ticked, same "don't lose
 what was typed" treatment as the custom-rule fields.
 `Warranty::duration_for_product( $product_id )` returns them as
-`['length' => int, 'period' => 'month'|'year']` for later features to
-consume — nothing does yet; callers must still check
+`['length' => int, 'period' => 'month'|'year']`; callers must still check
 `is_enabled_for_product()` themselves first, same pattern as `CustomRules`.
+
+### Activation and expiry (Pro)
+
+No new table needed for this: it reuses `snw_serial_numbers.status`
+(`Activated`/`Expired` already existed in the enum, just unused until now)
+and `.expires_at`, plus one new column, `activated_at` (nullable — when a
+serial's warranty started; needed because "days after completed" and any
+future manual-activation flow can't be reconstructed from `expires_at`
+alone). Adding it is a schema change, so it needs the usual reactivate step.
+
+`Warranty::activate_serial( $serial_id )` is the single place that starts a
+serial's warranty: computes `expires_at` from `duration_for_product()`
+relative to now, then calls `Repository::activate()` (sets `Status::ACTIVATED`,
+`activated_at = now()`, and the computed `expires_at` in one write — a
+generic primitive, reusable by whichever trigger calls it). It's idempotent
+— a serial with `activated_at` already set is left untouched — so re-firing
+the same trigger twice (e.g. a status hook that runs again) never resets the
+clock. It does *not* check `is_enabled_for_product()` itself: by the time
+something calls it, that decision belongs to the caller.
+
+`Pro\Warranty\ActivationTrigger` is that caller for the two automatic modes,
+controlled by the "Activation trigger" setting in WooCommerce > Settings >
+Serial Numbers (`snw_warranty_activation_trigger`, Pro area, disabled
+inputs when unlicensed like every other Pro settings control): on
+`woocommerce_order_status_completed`, it walks the order's items, skips any
+whose product isn't `Warranty::is_enabled_for_product()`, and for each of
+the item's serial IDs (`Assigner::serial_ids()`) either activates
+immediately or schedules a one-off `wp_schedule_single_event()`
+(`snw_activate_warranty_serial`, delay from `snw_warranty_activation_days`)
+per serial. A third mode — customer-initiated manual activation — is
+planned but not built yet; there is deliberately no UI option for it until
+the actual customer-facing activation flow exists, so the settings screen
+never offers a choice that silently does nothing.
+
+`Pro\Warranty\ExpiryChecker` is a daily WP-Cron sweep
+(`snw_check_warranty_expirations`) that flips any serial with
+`status = Activated AND expires_at <= now()` to `Expired` via
+`Repository::expire()` (status only — leaves `activated_at`/`expires_at` as
+the historical record). It self-schedules from its own constructor rather
+than on plugin activation: the class doesn't exist in the free zip, so
+Free-tier code can't reference it to schedule it, and licensing can change
+at runtime (`SNW_DEV_UNLOCK_ALL`) independent of when the plugin was last
+activated — `Plugin::init()` only ever instantiates it when licensed, and
+`wp_next_scheduled()` makes re-checking cheap on every such request.
+`ActivationTrigger`'s delayed-activation hook has the same "can't be
+scheduled from Free code" shape, just via `wp_schedule_single_event()`
+instead of a recurring one.
+
+Both cron hook names are duplicated as literal strings in
+`Install::WARRANTY_CRON_HOOKS`, used by the new `Install::deactivate()`
+(registered via `register_deactivation_hook` in the bootstrap file) to
+`wp_clear_scheduled_hook()` them on deactivation. This has to be a literal
+string rather than `ActivationTrigger::DELAYED_ACTIVATION_HOOK` /
+`ExpiryChecker::CRON_HOOK` for the same reason as everywhere else a Free
+class can't reference a Pro one: the constant reference would autoload a
+class that doesn't exist in the free zip. Keep the three in sync by hand if
+a hook name ever changes.
 
 ## CSV export (Pro)
 
