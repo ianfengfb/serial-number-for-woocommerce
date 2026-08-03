@@ -102,6 +102,8 @@ includes/
     Warranty/ActivationTrigger.php  Pro: starts warranty on an order's eligible items when it's marked Completed
                                      (immediately, or after a configured delay)
     Warranty/ExpiryChecker.php      Pro: daily cron flipping Activated serials past their expires_at to Expired
+    Warranty/Extension.php          Pro: lets a customer pay to extend a product's warranty when they buy it —
+                                     an option on the product page, snapshotted onto the order line item
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -154,10 +156,12 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   (`ProductTab::WARRANTY_ENABLED_META_KEY`) are further dependent
   per-product meta, all Pro-gated — `ProductTab::save()` never persists
   any of them as `yes` without a license — see Stock sync, Custom generation
-  rules, and Warranty below. The meta-key constants live on the Free
-  `ProductTab` class (not the Pro classes that act on them) precisely so
-  Free code can render their teaser markup and gate their persistence
-  without referencing Pro.
+  rules, and Warranty below. `_snw_warranty_extension_enabled` and its
+  length/period/price siblings follow the exact same shape, one level
+  further down (dependent on warranty itself being enabled). The meta-key
+  constants live on the Free `ProductTab` class (not the Pro classes that
+  act on them) precisely so Free code can render their teaser markup and
+  gate their persistence without referencing Pro.
 - Serials handed to an order live on the line item, not the order: the
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
@@ -314,6 +318,44 @@ string rather than `ActivationTrigger::DELAYED_ACTIVATION_HOOK` /
 class can't reference a Pro one: the constant reference would autoload a
 class that doesn't exist in the free zip. Keep the three in sync by hand if
 a hook name ever changes.
+
+### Warranty extension (Pro)
+
+Deliberately *not* a separate purchasable product linked to the main one —
+that shape has real edge cases (wrong extension linked, mismatched
+quantities between the two products, etc.). Instead `Pro\Warranty\Extension`
+adds a plain checkbox on the product page itself ("Add N extra warranty
+(+price)"), so there's only ever one product/one line item to reason about:
+
+- **Product page** (`woocommerce_before_add_to_cart_button`): the checkbox
+  only renders when `Extension::is_enabled_for_product()` passes (licensed,
+  warranty enabled, and the product's own `_snw_warranty_extension_enabled`
+  is `yes`).
+- **Add to cart** (`woocommerce_add_cart_item_data`): if checked, the
+  product's *current* extension length/period is captured into the cart
+  item's data under `Extension::CART_ITEM_KEY`. WooCommerce's own cart-key
+  hashing already keeps an extension-checked add separate from a plain one
+  for the same product, so no manual cart-item-key trick is needed.
+  `woocommerce_before_calculate_totals` adds the product's extension price
+  to that cart item's price; `woocommerce_get_item_data` shows "Warranty
+  extension: N Months/Years" in the cart/checkout line.
+- **Checkout** (`woocommerce_checkout_create_order_line_item`): the chosen
+  duration is snapshotted onto the order item as `Extension::ITEM_META_KEY`
+  — a deliberate copy, not a live reference to the product's settings, so
+  changing or removing the extension option on the product later never
+  changes what an already-placed order paid for.
+- **Activation**: `Warranty::activate_serial()` resolves the order item a
+  serial belongs to via `Assigner::find_item_for_serial()` (the reverse of
+  `serial_ids()`) and, if that item's `Extension::duration_for_order_item()`
+  returns a duration, adds it to the base warranty length before computing
+  `expires_at` — both durations are converted to months and summed
+  (`duration_in_months()`) rather than combined as a length/period pair, so
+  a "1 year" base plus a "6 Month" extension doesn't need any unit-mixing
+  logic beyond addition.
+
+One purchase decision applies to the *entire* line item — if a customer
+buys 3 of a product with the extension checked, all 3 of that item's
+serials get the extended warranty; there's no per-unit choice.
 
 ## CSV export (Pro)
 
