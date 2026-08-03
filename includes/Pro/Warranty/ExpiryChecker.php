@@ -41,6 +41,14 @@ final class ExpiryChecker {
 
 		foreach ( Repository::find_activated_past_expiry() as $serial ) {
 			Repository::expire( (int) $serial->id );
+
+			/**
+			 * Fires after a serial number's warranty expires. Backs the
+			 * Warranty Expired customer email (Pro\Warranty\Emails\WarrantyExpiredEmail).
+			 *
+			 * @param int $serial_id
+			 */
+			do_action( 'snw_warranty_expired', (int) $serial->id );
 		}
 	}
 }
