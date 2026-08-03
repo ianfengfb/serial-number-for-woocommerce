@@ -284,7 +284,12 @@ something calls it, that decision belongs to the caller.
 `Pro\Warranty\ActivationTrigger` is that caller for the two automatic modes,
 controlled by the "Activation trigger" setting in WooCommerce > Settings >
 Serial Numbers (`snw_warranty_activation_trigger`, Pro area, disabled
-inputs when unlicensed like every other Pro settings control): on
+inputs when unlicensed like every other Pro settings control). Its sibling
+"Grace period (days)" field only means anything in the days-after-completed
+mode, so `Settings::print_activation_trigger_script()` (an inline
+`admin_footer` script scoped to this settings tab, targeting fields by ID
+rather than assuming WooCommerce's row markup) hides that field and zeroes
+it whenever the trigger isn't set to that mode. On
 `woocommerce_order_status_completed`, it walks the order's items, skips any
 whose product isn't `Warranty::is_enabled_for_product()`, and for each of
 the item's serial IDs (`Assigner::serial_ids()`) either activates
