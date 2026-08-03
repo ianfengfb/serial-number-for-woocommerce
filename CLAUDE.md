@@ -82,7 +82,7 @@ includes/
     Assigner.php                    Free tier: assigns serials to order line items when an order is placed;
                                      also holds add_manual_serial(), the create-or-attach-or-reject logic
                                      behind the order edit screen's manual "Add Serial Number" control, and
-                                     serial_numbers(), the read-only lookup both display classes below share
+                                     serial_rows()/serial_numbers(), the read-only lookups both display classes below share
     ItemDisplay.php                 Free tier: shows an item's assigned serials plus the "Add Serial Number"
                                      control on the admin order edit screen
     CustomerItemDisplay.php         Free tier: shows an item's assigned serials to the customer — order
@@ -536,8 +536,8 @@ Available count. On success the page simply reloads rather than patching the
 DOM, since the read-only serial list above is rendered server-side.
 
 `Orders\CustomerItemDisplay` shows the same read-only list
-(`Assigner::serial_numbers()`, shared with `ItemDisplay` rather than
-re-querying) to the customer, but on a different hook: order emails, the
+(`Assigner::serial_rows()`, shared with `ItemDisplay`'s `serial_numbers()`
+rather than re-querying) to the customer, but on a different hook: order emails, the
 thank-you page, and the My Account order view all render line items through
 `woocommerce_order_item_meta_end` (with a `$plain_text` arg for plain-text
 emails), whereas the admin order edit screen uses
@@ -556,6 +556,11 @@ order-details page both call the item hook with `$plain_text` false, so
 hooks, which fire once each around an email's entire items table — setting
 an `$in_email` flag true for the former and false for the latter — so
 `render()` knows which setting applies to the item hook firing in between.
+That same flag also decides whether each serial's expiry date is shown
+alongside it (`Assigner::serial_rows()` returns the full row, not just the
+`serial_number` string, precisely so this and any other display can reach
+`expires_at`) — only the order-details page shows it; emails stay
+serial-number-only.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
