@@ -173,7 +173,11 @@ final class Settings extends \WC_Settings_Page {
 			array(
 				'title' => __( 'Warranty (Pro)', 'serial-number-for-woocommerce' ),
 				'type'  => 'title',
-				'desc'  => __( 'Controls when a serial number\'s warranty starts counting down, for products with warranty tracking enabled on their Serial Number tab. Requires a license.', 'serial-number-for-woocommerce' ),
+				'desc'  => sprintf(
+					/* translators: %s: link to WooCommerce > Settings > Emails */
+					__( 'Controls when a serial number\'s warranty starts counting down, for products with warranty tracking enabled on their Serial Number tab. Requires a license. The "Warranty Activated" and "Warranty Expired" customer emails can be turned on/off and customised in %s.', 'serial-number-for-woocommerce' ),
+					'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=email' ) ) . '">' . esc_html__( 'WooCommerce > Settings > Emails', 'serial-number-for-woocommerce' ) . '</a>'
+				),
 				'id'    => 'snw_warranty_settings',
 			),
 			array(

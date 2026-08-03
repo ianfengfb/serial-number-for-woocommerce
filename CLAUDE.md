@@ -104,6 +104,12 @@ includes/
     Warranty/ExpiryChecker.php      Pro: daily cron flipping Activated serials past their expires_at to Expired
     Warranty/Extension.php          Pro: lets a customer pay to extend a product's warranty when they buy it —
                                      an option on the product page, snapshotted onto the order line item
+    Warranty/Emails/
+      AbstractWarrantyEmail.php     Pro: shared WC_Email plumbing for the two warranty notification emails
+      WarrantyActivatedEmail.php    Pro: customer email sent on the snw_warranty_activated action
+      WarrantyExpiredEmail.php      Pro: customer email sent on the snw_warranty_expired action
+templates/emails/                   Warranty notification email templates (HTML + templates/emails/plain/),
+                                     theme-overridable the same way WooCommerce's own email templates are
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -361,6 +367,31 @@ adds a plain checkbox on the product page itself ("Add N extra warranty
 One purchase decision applies to the *entire* line item — if a customer
 buys 3 of a product with the extension checked, all 3 of that item's
 serials get the extended warranty; there's no per-unit choice.
+
+### Activation and expiry emails (Pro)
+
+`Pro\Warranty\Emails\WarrantyActivatedEmail` and `WarrantyExpiredEmail`
+(sharing their trigger/render plumbing via `AbstractWarrantyEmail`) are
+registered through WooCommerce's own `woocommerce_email_classes` filter —
+deliberately, rather than building a bespoke settings UI for them: this
+gets each email listed on WooCommerce > Settings > Emails with WC's native
+enable/disable toggle, subject/heading fields, and a theme-overridable
+template (`templates/emails/warranty-activated.php` /
+`warranty-expired.php`, plus `templates/emails/plain/` for the plain-text
+versions) for free, matching how every other WooCommerce email already
+works for the store owner. The "Warranty (Pro)" settings section links
+there so it's discoverable from the Serial Number-specific settings too.
+
+Both are triggered by a plain action carrying just the serial ID —
+`snw_warranty_activated` (fired from `Warranty::activate_serial()`, right
+after `Repository::activate()`) and `snw_warranty_expired` (fired from
+`ExpiryChecker::check()`, right after `Repository::expire()`). Each
+email's `trigger()` re-resolves the serial and its order fresh from that
+ID (rather than the action passing the order/customer directly), so the
+same lookup logic is exercised identically whether the plugin is in the
+middle of an active request or a WP-Cron sweep. No recipient (order
+missing, or no billing email) simply skips sending — same "fail quiet, not
+loud" posture as everywhere else in the plugin that resolves an order.
 
 ## CSV export (Pro)
 

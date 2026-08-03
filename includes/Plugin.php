@@ -34,6 +34,16 @@ final class Plugin {
 			new Pro\Warranty\ActivationTrigger();
 			new Pro\Warranty\ExpiryChecker();
 			new Pro\Warranty\Extension();
+
+			add_filter(
+				'woocommerce_email_classes',
+				function ( array $emails ): array {
+					$emails['SNW_Warranty_Activated_Email'] = new Pro\Warranty\Emails\WarrantyActivatedEmail();
+					$emails['SNW_Warranty_Expired_Email']   = new Pro\Warranty\Emails\WarrantyExpiredEmail();
+
+					return $emails;
+				}
+			);
 		}
 
 		add_filter(
