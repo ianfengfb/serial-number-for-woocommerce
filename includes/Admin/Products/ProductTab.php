@@ -282,13 +282,14 @@ final class ProductTab {
 							<input
 								type="number"
 								id="<?php echo esc_attr( self::WARRANTY_LENGTH_META_KEY ); ?>"
+								name="<?php echo esc_attr( self::WARRANTY_LENGTH_META_KEY ); ?>"
 								min="1"
 								step="1"
 								class="small-text"
 								value="<?php echo esc_attr( get_post_meta( $post->ID, self::WARRANTY_LENGTH_META_KEY, true ) ?: '1' ); ?>"
 								<?php disabled( ! $is_pro ); ?>
 							/>
-							<select id="<?php echo esc_attr( self::WARRANTY_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+							<select id="<?php echo esc_attr( self::WARRANTY_PERIOD_META_KEY ); ?>" name="<?php echo esc_attr( self::WARRANTY_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
 								<?php $warranty_period = get_post_meta( $post->ID, self::WARRANTY_PERIOD_META_KEY, true ) ?: 'year'; ?>
 								<option value="month" <?php selected( $warranty_period, 'month' ); ?>><?php esc_html_e( 'Month(s)', 'serial-number-for-woocommerce' ); ?></option>
 								<option value="year" <?php selected( $warranty_period, 'year' ); ?>><?php esc_html_e( 'Year(s)', 'serial-number-for-woocommerce' ); ?></option>
@@ -329,13 +330,14 @@ final class ProductTab {
 								<input
 									type="number"
 									id="<?php echo esc_attr( self::WARRANTY_EXTENSION_LENGTH_META_KEY ); ?>"
+									name="<?php echo esc_attr( self::WARRANTY_EXTENSION_LENGTH_META_KEY ); ?>"
 									min="1"
 									step="1"
 									class="small-text"
 									value="<?php echo esc_attr( get_post_meta( $post->ID, self::WARRANTY_EXTENSION_LENGTH_META_KEY, true ) ?: '1' ); ?>"
 									<?php disabled( ! $is_pro ); ?>
 								/>
-								<select id="<?php echo esc_attr( self::WARRANTY_EXTENSION_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+								<select id="<?php echo esc_attr( self::WARRANTY_EXTENSION_PERIOD_META_KEY ); ?>" name="<?php echo esc_attr( self::WARRANTY_EXTENSION_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
 									<?php $extension_period = get_post_meta( $post->ID, self::WARRANTY_EXTENSION_PERIOD_META_KEY, true ) ?: 'year'; ?>
 									<option value="month" <?php selected( $extension_period, 'month' ); ?>><?php esc_html_e( 'Month(s)', 'serial-number-for-woocommerce' ); ?></option>
 									<option value="year" <?php selected( $extension_period, 'year' ); ?>><?php esc_html_e( 'Year(s)', 'serial-number-for-woocommerce' ); ?></option>
@@ -347,6 +349,7 @@ final class ProductTab {
 								<input
 									type="number"
 									id="<?php echo esc_attr( self::WARRANTY_EXTENSION_PRICE_META_KEY ); ?>"
+									name="<?php echo esc_attr( self::WARRANTY_EXTENSION_PRICE_META_KEY ); ?>"
 									min="0"
 									step="0.01"
 									class="small-text"
