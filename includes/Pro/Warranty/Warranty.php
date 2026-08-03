@@ -76,6 +76,14 @@ final class Warranty {
 
 		Repository::activate( $serial_id, gmdate( 'Y-m-d H:i:s', $expires_ts ) );
 
+		/**
+		 * Fires after a serial number's warranty activates. Backs the
+		 * Warranty Activated customer email (Pro\Warranty\Emails\WarrantyActivatedEmail).
+		 *
+		 * @param int $serial_id
+		 */
+		do_action( 'snw_warranty_activated', $serial_id );
+
 		return true;
 	}
 
