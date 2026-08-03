@@ -96,7 +96,7 @@ includes/
     Export/Exporter.php             Pro: streams the (optionally filtered) list as a CSV via admin_post
     Import/Controller.php           Pro: CSV import page — upload+parse, transient-backed preview, commit
     Import/RowParser.php            Pro: pure per-row parsing/validation shared by preview and commit
-    Warranty/Warranty.php           Pro: starting point for per-product warranty tracking (opt-in checkbox only so far)
+    Warranty/Warranty.php           Pro: starting point for per-product warranty tracking (opt-in checkbox + length/period so far)
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -188,6 +188,18 @@ checkboxes are on (and licensed), WooCommerce's native stock quantity field
 (`#_stock`, on the Inventory tab) is disabled with a short note explaining
 why, toggled live as either checkbox changes.
 
+`sync()` returns the new count (or `null` if it no-opped) rather than
+`void`, specifically so the two AJAX handlers that trigger it from the
+product tab — `Admin\SerialNumbers\Ajax::import_serials()` ("Add to Pool")
+and `Pro\CustomRules\Ajax::bulk_generate_for_product()` ("Bulk generate
+this amount of serial numbers") — can hand it back to the browser as
+`stock_quantity` in their JSON response. `ProductTab`'s inline script
+(`snwApplyStockQuantity()`) then writes it straight into the disabled
+`#_stock` field, so the admin sees the real number immediately instead of a
+stale one that only catches up after saving or refreshing — `.val()` on a
+disabled field works fine since `disabled` only blocks user input and form
+submission, not script changes.
+
 ## Custom generation rules (Pro)
 
 `Generator::generate( array $overrides = array() )` takes any of `prefix`,
@@ -220,14 +232,25 @@ if the rule was just changed.
 
 `Pro\Warranty\Warranty` is a starting point, not a finished feature: an
 "Enable warranty for this product" checkbox on the Serial Number tab's Pro
-Features area, gated and persisted the same way as `MANAGE_STOCK_META_KEY`
-and `CUSTOM_RULE_ENABLED_META_KEY` (`ProductTab::save()` never persists it
-as `yes` without a license). `Warranty::is_enabled_for_product()` mirrors
-`StockSync`'s and `CustomRules`' own version of that method, so later
-warranty features (duration/terms, and whatever effect they have on
-individual serial numbers) have a single existing place to gate from,
-rather than reinventing the check. Nothing reads this meta yet beyond the
-checkbox itself.
+Features area (last item in that area, right after "Bulk generate this
+amount of serial numbers"), gated and persisted the same way as
+`MANAGE_STOCK_META_KEY` and `CUSTOM_RULE_ENABLED_META_KEY` (`ProductTab::save()`
+never persists it as `yes` without a license). `Warranty::is_enabled_for_product()`
+mirrors `StockSync`'s and `CustomRules`' own version of that method, so
+later warranty features (whatever effect they have on individual serial
+numbers) have a single existing place to gate from, rather than reinventing
+the check.
+
+Checking it reveals a "Warranty length" row (`#snw-warranty-fields`, toggled
+the same way `#snw-custom-rule-fields` is) — a number input
+(`WARRANTY_LENGTH_META_KEY`, default `1`) plus a Month(s)/Year(s) select
+(`WARRANTY_PERIOD_META_KEY`, default `year`). Both persist whenever
+licensed regardless of whether the checkbox is ticked, same "don't lose
+what was typed" treatment as the custom-rule fields.
+`Warranty::duration_for_product( $product_id )` returns them as
+`['length' => int, 'period' => 'month'|'year']` for later features to
+consume — nothing does yet; callers must still check
+`is_enabled_for_product()` themselves first, same pattern as `CustomRules`.
 
 ## CSV export (Pro)
 
@@ -335,12 +358,15 @@ future claiming code on that pattern rather than a plain SELECT-then-UPDATE.
 assigns the difference between an item's quantity and the serials it holds.
 
 `Orders\ItemDisplay` hooks `woocommerce_after_order_itemmeta` to show each
-item's assigned serials (resolved from `Assigner::serial_ids()` via
-`Repository::find()`) on the admin order edit screen, and — for orders whose
-item was never auto-assigned in the first place, e.g. the product wasn't
-`_snw_enabled` yet at checkout — an "Add Serial Number" input + button
-underneath, always shown regardless of whether the item already holds any
-serials (this is a manual override tool, not a top-up).
+item's assigned serials (resolved from `Assigner::serial_numbers()`, shared
+with `CustomerItemDisplay`) on the admin order edit screen, and — unless the
+item already holds one serial per ordered unit — an "Add Serial Number"
+input + button underneath (a manual override tool, not a top-up, for orders
+whose item was never auto-assigned in the first place, e.g. the product
+wasn't `_snw_enabled` yet at checkout). It compares against
+`$item->get_quantity()` rather than checking "any serials at all", so a
+partially-topped-up item still shows the control for its shortfall, and a
+fully-covered one hides it since there's nothing left to add.
 
 That control posts to `wp_ajax_snw_add_order_item_serial` (`Orders\Ajax`,
 enqueuing `assets/js/order-item-serials.js` only on the order edit screen —

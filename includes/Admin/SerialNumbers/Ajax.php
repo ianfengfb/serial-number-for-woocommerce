@@ -40,15 +40,14 @@ final class Ajax {
 
 		$result = Repository::import_for_product( $product_id, $raw );
 
-		if ( $result['created'] && Licensing::is_pro_active() ) {
-			StockSync::sync( $product_id );
-		}
+		$stock_quantity = ( $result['created'] && Licensing::is_pro_active() ) ? StockSync::sync( $product_id ) : null;
 
 		wp_send_json_success(
 			array(
-				'message' => self::import_summary_message( $result ),
-				'created' => $result['created'],
-				'skipped' => $result['skipped'],
+				'message'        => self::import_summary_message( $result ),
+				'created'        => $result['created'],
+				'skipped'        => $result['skipped'],
+				'stock_quantity' => $stock_quantity,
 			)
 		);
 	}

@@ -24,16 +24,23 @@ final class StockSync {
 	 * Safe to call unconditionally from anywhere the pool count may have
 	 * changed — it no-ops unless licensed and stock-by-serial-number is
 	 * switched on for the product.
+	 *
+	 * @return int|null The newly synced stock quantity, or null if it no-opped
+	 *                   (unlicensed, not enabled for this product, or the
+	 *                   product couldn't be loaded) — callers that need to
+	 *                   reflect the new number back to the browser (e.g. an
+	 *                   AJAX response updating the on-screen stock field) can
+	 *                   use this instead of re-querying count_available().
 	 */
-	public static function sync( int $product_id ): void {
+	public static function sync( int $product_id ): ?int {
 		if ( ! Licensing::is_pro_active() || ! self::is_enabled_for_product( $product_id ) ) {
-			return;
+			return null;
 		}
 
 		$product = wc_get_product( $product_id );
 
 		if ( ! $product ) {
-			return;
+			return null;
 		}
 
 		$count = Repository::count_available( $product_id );
@@ -42,5 +49,7 @@ final class StockSync {
 		$product->set_stock_quantity( $count );
 		$product->set_stock_status( $count > 0 ? 'instock' : 'outofstock' );
 		$product->save();
+
+		return $count;
 	}
 }
