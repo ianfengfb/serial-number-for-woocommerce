@@ -124,6 +124,8 @@ includes/
     LicenseKey/RestApi.php          Pro: registers POST /wp-json/snw/v1/license/activate for a seller's
                                      own external system to activate an 'api'-trigger product's license
                                      key; also backs the API key's admin-post "Regenerate" link
+    LicenseKey/AdminActivation.php  Pro: "Activate" button on the admin order edit screen — an override
+                                     available regardless of the product's own activation trigger
     LicenseKey/Emails/
       AbstractLicenseEmail.php     Pro: shared WC_Email plumbing for the two per-serial license emails —
                                      intentionally a separate copy of Warranty's AbstractWarrantyEmail
@@ -146,6 +148,8 @@ assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather
                                      registered/enqueued on a third-party admin page across WC versions
 assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 init for Bulk Generate
 assets/pro/js/license-activation.js  Pro: AJAX handler for the customer's manual "Activate" button
+assets/pro/js/admin-license-activation.js Pro: AJAX handler for the admin order screen's own "Activate"
+                                     button, reusing the order screen's existing snw_admin nonce
 ```
 
 ## Data model
@@ -571,6 +575,27 @@ echo back `serial_number` for the caller to confirm against. No new
 customer activation: `activate_serial()` fires the same
 `snw_license_activated` action regardless of caller, so
 `LicenseActivatedEmail`/`LicenseActivatedAdminEmail` fire identically.
+
+### Admin manual activation (Pro)
+
+`Pro\LicenseKey\AdminActivation` renders its own "Activate {key}" button on
+the admin order edit screen (`woocommerce_after_order_itemmeta`, same hook
+as the Free `ItemDisplay`, at a later priority so it appears below that
+class's read-only key list and manual "Add Serial Number" control) for any
+of an item's still-unactivated license keys — an override the store admin
+can use regardless of that product's own activation trigger, unlike every
+other activation path above which only ever acts on serials whose trigger
+actually matches. Useful for support cases (a customer asks to have their
+key activated early, testing, an `'api'`-trigger product whose external
+system isn't wired up yet, etc.) where waiting for the configured trigger
+isn't practical. Its AJAX handler
+(`wp_ajax_snw_admin_activate_license`) reuses the order screen's existing
+`snw_admin` nonce and `SNWOrderItemSerials` localized object — both are
+always printed on that screen by the Free `Orders\Ajax` class regardless
+of license status, so there's nothing Pro-specific to localize; the new
+script just declares `snw-order-item-serials` as a dependency so load
+order is guaranteed. Same `snw_license_activated` action on success, so
+the usual emails fire the same as any other activation path.
 
 ### License emails (Pro)
 

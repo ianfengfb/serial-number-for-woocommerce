@@ -38,6 +38,7 @@ final class Plugin {
 			new Pro\LicenseKey\CustomerActivation();
 			new Pro\LicenseKey\Ajax();
 			new Pro\LicenseKey\RestApi();
+			new Pro\LicenseKey\AdminActivation();
 
 			add_filter(
 				'woocommerce_email_classes',
