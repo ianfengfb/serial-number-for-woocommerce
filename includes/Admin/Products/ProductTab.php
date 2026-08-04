@@ -55,6 +55,8 @@ final class ProductTab {
 
 	const LICENSE_INSTRUCTIONS_META_KEY = '_snw_license_instructions';
 
+	const LICENSE_RENEWAL_PRICE_META_KEY = '_snw_license_renewal_price';
+
 	public function __construct() {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'add_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'render_panel' ) );
@@ -443,6 +445,22 @@ final class ProductTab {
 							)
 						);
 						?>
+						<?php $product_for_price = wc_get_product( $post->ID ); ?>
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::LICENSE_RENEWAL_PRICE_META_KEY ); ?>"><?php esc_html_e( 'Renewal price', 'serial-number-for-woocommerce' ); ?></label>
+							<input
+								type="number"
+								id="<?php echo esc_attr( self::LICENSE_RENEWAL_PRICE_META_KEY ); ?>"
+								name="<?php echo esc_attr( self::LICENSE_RENEWAL_PRICE_META_KEY ); ?>"
+								min="0"
+								step="0.01"
+								class="small-text"
+								placeholder="<?php echo esc_attr( $product_for_price ? $product_for_price->get_price() : '0' ); ?>"
+								value="<?php echo esc_attr( get_post_meta( $post->ID, self::LICENSE_RENEWAL_PRICE_META_KEY, true ) ); ?>"
+								<?php disabled( ! $is_pro ); ?>
+							/>
+							<?php echo wc_help_tip( __( 'Charged when a customer renews an existing license key from their My Account order view. Leave blank to charge the product\'s regular price.', 'serial-number-for-woocommerce' ) ); ?>
+						</p>
 					</div>
 				</div>
 			</div>
@@ -727,6 +745,18 @@ final class ProductTab {
 				$product_id,
 				self::LICENSE_INSTRUCTIONS_META_KEY,
 				isset( $_POST[ self::LICENSE_INSTRUCTIONS_META_KEY ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ self::LICENSE_INSTRUCTIONS_META_KEY ] ) ) : ''
+			);
+
+			// Blank means "charge the product's regular price" (see
+			// Renewal::renewal_price_for_product()) — stored as '' rather
+			// than a computed number, so it keeps tracking the product's
+			// current price if that changes later instead of freezing it.
+			update_post_meta(
+				$product_id,
+				self::LICENSE_RENEWAL_PRICE_META_KEY,
+				isset( $_POST[ self::LICENSE_RENEWAL_PRICE_META_KEY ] ) && '' !== $_POST[ self::LICENSE_RENEWAL_PRICE_META_KEY ]
+					? wc_format_decimal( wp_unslash( $_POST[ self::LICENSE_RENEWAL_PRICE_META_KEY ] ) )
+					: ''
 			);
 		}
 

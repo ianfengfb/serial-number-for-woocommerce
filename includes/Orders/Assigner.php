@@ -28,6 +28,17 @@ final class Assigner {
 	/** Order item meta holding the assigned serial numbers' row IDs. */
 	const ITEM_META_KEY = '_snw_serial_ids';
 
+	/**
+	 * Order item meta (Pro\LicenseKey\Renewal) flagging a line item as a
+	 * license renewal rather than a normal purchase — its row ID here so
+	 * assign_for_order() below can skip it. Defined on this Free class,
+	 * not Renewal itself, for the same reason every other Pro meta-key
+	 * constant lives on Free code: checking whether it's present never
+	 * needs to reference Pro, so this stays a harmless no-op in the free
+	 * zip, where the meta can never exist in the first place.
+	 */
+	const RENEWAL_ITEM_META_KEY = '_snw_renewal_serial_id';
+
 	public function __construct() {
 		// Classic checkout.
 		add_action( 'woocommerce_checkout_order_processed', array( $this, 'on_checkout_order_processed' ), 10, 3 );
@@ -68,6 +79,15 @@ final class Assigner {
 
 		foreach ( $order->get_items() as $item ) {
 			if ( ! $item instanceof \WC_Order_Item_Product ) {
+				continue;
+			}
+
+			// A license renewal line item (Pro\LicenseKey\Renewal) reuses its
+			// existing serial rather than wanting a fresh one — top-up
+			// assignment would otherwise hand it a brand new serial on top
+			// of the renewal, since this is always a distinct order item
+			// starting with none of its own.
+			if ( $item->get_meta( self::RENEWAL_ITEM_META_KEY, true ) ) {
 				continue;
 			}
 
