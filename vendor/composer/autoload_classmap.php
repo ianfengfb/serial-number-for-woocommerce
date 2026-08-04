@@ -29,6 +29,8 @@ return array(
     'SerialNumberForWooCommerce\\Pro\\Export\\Exporter' => $baseDir . '/includes/Pro/Export/Exporter.php',
     'SerialNumberForWooCommerce\\Pro\\Import\\Controller' => $baseDir . '/includes/Pro/Import/Controller.php',
     'SerialNumberForWooCommerce\\Pro\\Import\\RowParser' => $baseDir . '/includes/Pro/Import/RowParser.php',
+    'SerialNumberForWooCommerce\\Pro\\LicenseKey\\ActivationTrigger' => $baseDir . '/includes/Pro/LicenseKey/ActivationTrigger.php',
+    'SerialNumberForWooCommerce\\Pro\\LicenseKey\\LicenseKey' => $baseDir . '/includes/Pro/LicenseKey/LicenseKey.php',
     'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => $baseDir . '/includes/Pro/StockSync/StockSync.php',
     'SerialNumberForWooCommerce\\Pro\\Warranty\\ActivationTrigger' => $baseDir . '/includes/Pro/Warranty/ActivationTrigger.php',
     'SerialNumberForWooCommerce\\Pro\\Warranty\\Emails\\AbstractWarrantyEmail' => $baseDir . '/includes/Pro/Warranty/Emails/AbstractWarrantyEmail.php',

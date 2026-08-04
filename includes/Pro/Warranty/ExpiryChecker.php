@@ -8,7 +8,11 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Pro: a daily cron sweep that flips Activated serial numbers past their
- * expires_at to Expired.
+ * expires_at to Expired — shared infrastructure, not warranty-specific:
+ * the underlying query has no idea whether a given row is a warranty or a
+ * license, so this fires one generic event and leaves it to each feature's
+ * own listener (see WarrantyExpiredEmail::is_relevant()) to decide whether
+ * it cares about a given serial.
  *
  * Self-schedules from its own constructor rather than on plugin activation,
  * since this class doesn't exist at all in the free zip — Free-tier code
@@ -43,12 +47,14 @@ final class ExpiryChecker {
 			Repository::expire( (int) $serial->id );
 
 			/**
-			 * Fires after a serial number's warranty expires. Backs the
-			 * Warranty Expired customer email (Pro\Warranty\Emails\WarrantyExpiredEmail).
+			 * Fires after any serial number (warranty- or license-governed)
+			 * expires. Listeners must check relevance themselves — e.g.
+			 * WarrantyExpiredEmail only sends when Warranty::is_enabled_for_product()
+			 * is true for that serial's product.
 			 *
 			 * @param int $serial_id
 			 */
-			do_action( 'snw_warranty_expired', (int) $serial->id );
+			do_action( 'snw_serial_expired', (int) $serial->id );
 		}
 	}
 }
