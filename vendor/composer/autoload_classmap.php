@@ -38,6 +38,7 @@ return array(
     'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\LicenseDeliveryEmail' => $baseDir . '/includes/Pro/LicenseKey/Emails/LicenseDeliveryEmail.php',
     'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\LicenseExpiredEmail' => $baseDir . '/includes/Pro/LicenseKey/Emails/LicenseExpiredEmail.php',
     'SerialNumberForWooCommerce\\Pro\\LicenseKey\\LicenseKey' => $baseDir . '/includes/Pro/LicenseKey/LicenseKey.php',
+    'SerialNumberForWooCommerce\\Pro\\LicenseKey\\RestApi' => $baseDir . '/includes/Pro/LicenseKey/RestApi.php',
     'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => $baseDir . '/includes/Pro/StockSync/StockSync.php',
     'SerialNumberForWooCommerce\\Pro\\Warranty\\ActivationTrigger' => $baseDir . '/includes/Pro/Warranty/ActivationTrigger.php',
     'SerialNumberForWooCommerce\\Pro\\Warranty\\Emails\\AbstractWarrantyEmail' => $baseDir . '/includes/Pro/Warranty/Emails/AbstractWarrantyEmail.php',

@@ -121,6 +121,9 @@ includes/
                                      order view for a 'manual'-trigger product's still-unactivated keys
     LicenseKey/Ajax.php             Pro: wp_ajax_snw_activate_license backing that button; enqueues
                                      assets/pro/js/license-activation.js only on the view-order endpoint
+    LicenseKey/RestApi.php          Pro: registers POST /wp-json/snw/v1/license/activate for a seller's
+                                     own external system to activate an 'api'-trigger product's license
+                                     key; also backs the API key's admin-post "Regenerate" link
     LicenseKey/Emails/
       AbstractLicenseEmail.php     Pro: shared WC_Email plumbing for the two per-serial license emails —
                                      intentionally a separate copy of Warranty's AbstractWarrantyEmail
@@ -462,14 +465,15 @@ Two differences from Warranty's settings shape:
   `find_activated_past_expiry()`'s `expires_at <= now()` check, so it's
   correctly never swept by the cron — no special-casing needed there.
 - **Per-product activation trigger**: `LICENSE_ACTIVATION_TRIGGER_META_KEY`
-  (`'immediate'`, `'on_completed'`, or `'manual'`) is set per-product on the
-  Serial Number tab, not as a single store-wide setting like Warranty's —
-  licensed products can have very different real-world activation needs
-  (instant digital delivery vs. needing a completed/paid order first vs.
-  the customer redeeming it themselves whenever they're ready). Warranty's
-  own still-pending manual mode remains unbuilt — License's customer flow
-  below is not shared with it, since Warranty has no "redeem this key"
-  moment for a customer to trigger from.
+  (`'immediate'`, `'on_completed'`, `'manual'`, or `'api'`) is set
+  per-product on the Serial Number tab, not as a single store-wide setting
+  like Warranty's — licensed products can have very different real-world
+  activation needs (instant digital delivery vs. needing a completed/paid
+  order first vs. the customer redeeming it themselves vs. a seller's own
+  external system deciding when). Warranty's own still-pending manual mode
+  remains unbuilt — neither of License's customer- or system-driven flows
+  below are shared with it, since Warranty has no "redeem this key" moment
+  for anything to trigger from.
 
 `Pro\LicenseKey\ActivationTrigger` hooks both the checkout-processed events
 (classic + blocks/Store API) and `woocommerce_order_status_completed`, at
@@ -523,6 +527,50 @@ order view to click this button from, so `'manual'` only works for
 logged-in customers. There is no workaround planned — a seller who needs
 guest-checkout customers to self-activate should use `'immediate'` or
 `'on_completed'` instead.
+
+### External / API activation (Pro)
+
+For an `'api'`-trigger product, activation is left entirely to the
+seller's own external system (their license server, a fulfillment tool,
+whatever they run outside WordPress) — nothing in this plugin activates
+that product's serials automatically or from a customer-facing control.
+`Pro\LicenseKey\RestApi` registers `POST /wp-json/snw/v1/license/activate`
+for that system to call, identifying the license by `serial_number` in the
+request body (a string, not the internal row ID, since an external caller
+has no reason to know it) rather than the numeric ID every other internal
+caller uses.
+
+Auth is a single store-wide shared secret —
+`LicenseKey::get_or_create_api_key()` — sent as the `X-SNW-Api-Key`
+header, deliberately not WooCommerce's own REST API consumer key/secret
+system: that would need the seller to create a WC API key with the right
+permissions just for this one endpoint, whereas a single plugin-specific
+secret is a simpler "copy one value into your system" integration. The
+key is generated on first use (`get_or_create_api_key()`, called from both
+the REST permission check and the Settings field so neither ever sees an
+empty value) and persisted as the `snw_license_api_key` option — never
+read or displayed directly by anything else. It's shown read-only on the
+License Key (Pro) settings section (`Settings::license_api_key_description()`)
+alongside a "Regenerate" link straight to `RestApi::regenerate_api_key()`
+via `admin_post_snw_regenerate_license_api_key` — a plain nonce'd link,
+not AJAX, same pattern as Export CSV's own admin-post link. Regenerating
+invalidates the old key immediately; there's no grace period or dual-key
+overlap, since rotating on demand is the whole point of exposing the
+control at all.
+
+The endpoint's `activate()` callback re-validates everything server-side
+before calling `LicenseKey::activate_serial()` — matching serial exists
+(404), its product is actually license-enabled (400), that product's
+trigger is actually `'api'` (409, since a key valid for the store doesn't
+imply this particular serial is meant to be activated this way), and it
+isn't already activated (409) — returning a `WP_Error` with the
+appropriate HTTP status for each rather than a bare boolean, since an
+external caller needs a real status code to branch on. Success responses
+echo back `serial_number` for the caller to confirm against. No new
+"notify the seller" plumbing here either, same reasoning as manual
+customer activation: `activate_serial()` fires the same
+`snw_license_activated` action regardless of caller, so
+`LicenseActivatedEmail`/`LicenseActivatedAdminEmail` fire identically.
 
 ### License emails (Pro)
 
