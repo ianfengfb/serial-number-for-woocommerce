@@ -23,6 +23,7 @@ final class Plugin {
 	public function init(): void {
 		new Admin\Menu();
 		new Admin\Products\ProductTab();
+		new Admin\Support\Ajax();
 		new Orders\Assigner();
 		new Orders\ItemDisplay();
 		new Orders\CustomerItemDisplay();

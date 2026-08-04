@@ -2,6 +2,7 @@
 namespace SerialNumberForWooCommerce\Admin;
 
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
+use SerialNumberForWooCommerce\Admin\Support\Support;
 use SerialNumberForWooCommerce\Licensing;
 
 defined( 'ABSPATH' ) || exit;
@@ -242,6 +243,22 @@ final class Settings extends \WC_Settings_Page {
 			array(
 				'type' => 'sectionend',
 				'id'   => 'snw_license_settings',
+			),
+
+			array(
+				'title' => __( 'Support', 'serial-number-for-woocommerce' ),
+				'type'  => 'title',
+				'desc'  => sprintf(
+					/* translators: 1: link to the plugin's own Support page, 2: support email address, as a mailto link */
+					__( 'Have a question, found a bug, or want to request a feature? %1$s, or email us directly at %2$s.', 'serial-number-for-woocommerce' ),
+					'<a href="' . esc_url( Support::page_url() ) . '">' . esc_html__( 'Send us a message', 'serial-number-for-woocommerce' ) . '</a>',
+					'<a href="mailto:' . esc_attr( Support::support_email() ) . '">' . esc_html( Support::support_email() ) . '</a>'
+				),
+				'id'    => 'snw_support_settings',
+			),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'snw_support_settings',
 			),
 		);
 	}
