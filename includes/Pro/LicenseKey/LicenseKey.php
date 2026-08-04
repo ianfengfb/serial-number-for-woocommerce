@@ -39,12 +39,12 @@ final class LicenseKey {
 	}
 
 	/**
-	 * @return string 'immediate' or 'on_completed'.
+	 * @return string 'immediate', 'on_completed', or 'manual'.
 	 */
 	public static function activation_trigger_for_product( int $product_id ): string {
 		$trigger = get_post_meta( $product_id, ProductTab::LICENSE_ACTIVATION_TRIGGER_META_KEY, true );
 
-		return in_array( $trigger, array( 'immediate', 'on_completed' ), true ) ? $trigger : 'immediate';
+		return in_array( $trigger, array( 'immediate', 'on_completed', 'manual' ), true ) ? $trigger : 'immediate';
 	}
 
 	/**

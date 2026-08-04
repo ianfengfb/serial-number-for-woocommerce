@@ -117,6 +117,10 @@ includes/
                                      trigger (immediate, or on order Completed) — a per-product choice,
                                      unlike Warranty's store-wide setting; also fires the order-level
                                      license delivery notification regardless of each item's own trigger
+    LicenseKey/CustomerActivation.php Pro: renders the "Activate" button on the customer's My Account
+                                     order view for a 'manual'-trigger product's still-unactivated keys
+    LicenseKey/Ajax.php             Pro: wp_ajax_snw_activate_license backing that button; enqueues
+                                     assets/pro/js/license-activation.js only on the view-order endpoint
     LicenseKey/Emails/
       AbstractLicenseEmail.php     Pro: shared WC_Email plumbing for the two per-serial license emails —
                                      intentionally a separate copy of Warranty's AbstractWarrantyEmail
@@ -138,6 +142,7 @@ assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather
                                      own select2/selectWoo asset handles, which aren't guaranteed to be
                                      registered/enqueued on a third-party admin page across WC versions
 assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 init for Bulk Generate
+assets/pro/js/license-activation.js  Pro: AJAX handler for the customer's manual "Activate" button
 ```
 
 ## Data model
@@ -457,13 +462,14 @@ Two differences from Warranty's settings shape:
   `find_activated_past_expiry()`'s `expires_at <= now()` check, so it's
   correctly never swept by the cron — no special-casing needed there.
 - **Per-product activation trigger**: `LICENSE_ACTIVATION_TRIGGER_META_KEY`
-  (`'immediate'` or `'on_completed'`) is set per-product on the Serial
-  Number tab, not as a single store-wide setting like Warranty's — licensed
-  products can have very different real-world activation needs (instant
-  digital delivery vs. needing a completed/paid order first). A third mode
-  (customer-initiated manual activation) is intentionally not offered yet,
-  same reasoning as Warranty's still-pending manual mode: no UI option
-  until the actual activation flow exists.
+  (`'immediate'`, `'on_completed'`, or `'manual'`) is set per-product on the
+  Serial Number tab, not as a single store-wide setting like Warranty's —
+  licensed products can have very different real-world activation needs
+  (instant digital delivery vs. needing a completed/paid order first vs.
+  the customer redeeming it themselves whenever they're ready). Warranty's
+  own still-pending manual mode remains unbuilt — License's customer flow
+  below is not shared with it, since Warranty has no "redeem this key"
+  moment for a customer to trigger from.
 
 `Pro\LicenseKey\ActivationTrigger` hooks both the checkout-processed events
 (classic + blocks/Store API) and `woocommerce_order_status_completed`, at
@@ -474,7 +480,49 @@ classes' instantiation order in `Plugin::init()`. For each hook firing, it
 walks the order's items, skips any whose product isn't
 `LicenseKey::is_enabled_for_product()` or whose own activation-trigger
 setting doesn't match that hook's mode, and activates the rest via
-`LicenseKey::activate_serial()`.
+`LicenseKey::activate_serial()`. A `'manual'`-trigger product's serials
+never match either mode here, so they're correctly left untouched by both
+hooks — only the customer-facing flow below ever activates them.
+
+### Customer self-activation (Pro)
+
+For a `'manual'`-trigger product, `Pro\LicenseKey\CustomerActivation`
+renders an "Activate {key}" button next to each of the item's still-
+unactivated keys (`empty( $serial->activated_at )`) on the customer's My
+Account order view specifically — gated by `is_wc_endpoint_url(
+'view-order' )`, not the thank-you page or emails, since those aren't
+"my account, logged in" contexts. It hooks the same
+`woocommerce_order_item_meta_end` hook as `CustomerItemDisplay` but at
+priority 20 so its buttons render below that class's read-only key list
+rather than interleaved with it. No separate permission check is needed to
+render the button: WooCommerce's own `myaccount/view-order.php` template
+already gates the whole page behind `current_user_can( 'view_order', ... )`
+before this hook can fire.
+
+The button posts to `wp_ajax_snw_activate_license` (`Pro\LicenseKey\Ajax`,
+enqueuing `assets/pro/js/license-activation.js` only on the same
+`view-order` endpoint) with the order ID and serial ID. The handler re-does
+the permission check independently (`current_user_can( 'view_order',
+$order_id )`) since an AJAX request can't rely on the page load's own
+gate, confirms the serial actually belongs to one of that order's items via
+`Assigner::find_item_for_serial()` (never trusting the posted order/serial
+pairing on its own), re-checks the product is still license-enabled and
+still set to `'manual'`, and rejects an already-activated key before
+calling `LicenseKey::activate_serial()`. On success the page reloads, same
+"server-rendered, don't patch the DOM" pattern as the admin order screen's
+manual "Add Serial Number" control.
+
+This needs no new "notify the seller" plumbing: `LicenseKey::activate_serial()`
+fires the same `snw_license_activated` action regardless of what triggered
+it, which `LicenseActivatedEmail` and `LicenseActivatedAdminEmail` (see
+below) are already listening on — a manual customer activation notifies the
+seller exactly the same way an automatic one does.
+
+One known scope limit: a guest checkout (no account) has no My Account
+order view to click this button from, so `'manual'` only works for
+logged-in customers. There is no workaround planned — a seller who needs
+guest-checkout customers to self-activate should use `'immediate'` or
+`'on_completed'` instead.
 
 ### License emails (Pro)
 

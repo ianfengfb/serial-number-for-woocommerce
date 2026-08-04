@@ -30,6 +30,8 @@ return array(
     'SerialNumberForWooCommerce\\Pro\\Import\\Controller' => $baseDir . '/includes/Pro/Import/Controller.php',
     'SerialNumberForWooCommerce\\Pro\\Import\\RowParser' => $baseDir . '/includes/Pro/Import/RowParser.php',
     'SerialNumberForWooCommerce\\Pro\\LicenseKey\\ActivationTrigger' => $baseDir . '/includes/Pro/LicenseKey/ActivationTrigger.php',
+    'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Ajax' => $baseDir . '/includes/Pro/LicenseKey/Ajax.php',
+    'SerialNumberForWooCommerce\\Pro\\LicenseKey\\CustomerActivation' => $baseDir . '/includes/Pro/LicenseKey/CustomerActivation.php',
     'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\AbstractLicenseEmail' => $baseDir . '/includes/Pro/LicenseKey/Emails/AbstractLicenseEmail.php',
     'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\LicenseActivatedAdminEmail' => $baseDir . '/includes/Pro/LicenseKey/Emails/LicenseActivatedAdminEmail.php',
     'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\LicenseActivatedEmail' => $baseDir . '/includes/Pro/LicenseKey/Emails/LicenseActivatedEmail.php',

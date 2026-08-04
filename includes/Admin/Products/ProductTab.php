@@ -425,8 +425,9 @@ final class ProductTab {
 								<?php $activation_trigger = get_post_meta( $post->ID, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, true ) ?: 'immediate'; ?>
 								<option value="immediate" <?php selected( $activation_trigger, 'immediate' ); ?>><?php esc_html_e( 'Immediately at purchase', 'serial-number-for-woocommerce' ); ?></option>
 								<option value="on_completed" <?php selected( $activation_trigger, 'on_completed' ); ?>><?php esc_html_e( 'When the order is marked Completed', 'serial-number-for-woocommerce' ); ?></option>
+								<option value="manual" <?php selected( $activation_trigger, 'manual' ); ?>><?php esc_html_e( 'Manually by the customer (My Account)', 'serial-number-for-woocommerce' ); ?></option>
 							</select>
-							<?php echo wc_help_tip( __( 'When a license\'s validity period starts counting down.', 'serial-number-for-woocommerce' ) ); ?>
+							<?php echo wc_help_tip( __( 'When a license\'s validity period starts counting down. "Manually" shows an Activate button next to the key on the customer\'s My Account order view.', 'serial-number-for-woocommerce' ) ); ?>
 						</p>
 						<?php
 						woocommerce_wp_textarea_input(
@@ -719,7 +720,7 @@ final class ProductTab {
 			update_post_meta( $product_id, self::LICENSE_PERIOD_META_KEY, in_array( $license_period, array( 'month', 'year', 'lifetime' ), true ) ? $license_period : 'year' );
 
 			$activation_trigger = isset( $_POST[ self::LICENSE_ACTIVATION_TRIGGER_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::LICENSE_ACTIVATION_TRIGGER_META_KEY ] ) ) : '';
-			update_post_meta( $product_id, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, in_array( $activation_trigger, array( 'immediate', 'on_completed' ), true ) ? $activation_trigger : 'immediate' );
+			update_post_meta( $product_id, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, in_array( $activation_trigger, array( 'immediate', 'on_completed', 'manual' ), true ) ? $activation_trigger : 'immediate' );
 
 			update_post_meta(
 				$product_id,
