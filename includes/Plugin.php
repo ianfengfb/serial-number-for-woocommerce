@@ -51,6 +51,7 @@ final class Plugin {
 					$emails['SNW_License_Delivered_Email']       = new Pro\LicenseKey\Emails\LicenseDeliveryEmail();
 					$emails['SNW_License_Activated_Email']       = new Pro\LicenseKey\Emails\LicenseActivatedEmail();
 					$emails['SNW_License_Expired_Email']         = new Pro\LicenseKey\Emails\LicenseExpiredEmail();
+					$emails['SNW_License_Renewed_Email']         = new Pro\LicenseKey\Emails\LicenseRenewedEmail();
 					$emails['SNW_License_Activated_Admin_Email'] = new Pro\LicenseKey\Emails\LicenseActivatedAdminEmail();
 
 					return $emails;
