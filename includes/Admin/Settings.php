@@ -147,7 +147,7 @@ final class Settings extends \WC_Settings_Page {
 			array(
 				'title' => __( 'Customer visibility', 'serial-number-for-woocommerce' ),
 				'type'  => 'title',
-				'desc'  => __( 'Serial numbers are always visible to store admins on the order edit screen. These control whether customers see them too — some stores prefer to manage serial numbers internally instead, so turn both off to keep them admin-only.', 'serial-number-for-woocommerce' ),
+				'desc'  => __( 'Serial numbers are always visible to store admins on the order edit screen. These control whether customers see them too — some stores prefer to manage serial numbers internally instead, so turn both off to keep them admin-only. Print Slip (Pro), below, lets you hand a serial number/license key to the customer on paper instead of showing it online at all.', 'serial-number-for-woocommerce' ),
 				'id'    => 'snw_customer_visibility_settings',
 			),
 			array(
@@ -243,6 +243,25 @@ final class Settings extends \WC_Settings_Page {
 			array(
 				'type' => 'sectionend',
 				'id'   => 'snw_license_settings',
+			),
+
+			array(
+				'title' => __( 'Print Slip (Pro)', 'serial-number-for-woocommerce' ),
+				'type'  => 'title',
+				'desc'  => __( 'Print an order\'s serial numbers/license keys as a physical slip, straight from the order edit screen — a way to hand them to the customer without showing them online at all (see Customer visibility above).', 'serial-number-for-woocommerce' ),
+				'id'    => 'snw_print_slip_settings',
+			),
+			array(
+				'title'             => __( 'Default message', 'serial-number-for-woocommerce' ),
+				'desc'              => __( 'Shown pre-filled and editable on the print page itself, so you can tweak it per order before printing.', 'serial-number-for-woocommerce' ),
+				'id'                => 'snw_print_slip_message',
+				'type'              => 'textarea',
+				'default'           => '',
+				'custom_attributes' => $is_pro ? array() : array( 'disabled' => 'disabled' ),
+			),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'snw_print_slip_settings',
 			),
 
 			array(
