@@ -33,6 +33,7 @@ final class ItemDisplay {
 				<?php echo esc_html( implode( ', ', $serial_numbers ) ); ?>
 			</div>
 			<?php
+			$this->render_partial_refund_notice( $item_id, $item );
 		}
 
 		/*
@@ -66,5 +67,41 @@ final class ItemDisplay {
 			</style>
 			<?php
 		}
+	}
+
+	/**
+	 * A partial refund gives no way to know which specific serial the
+	 * refunded unit(s) correspond to — _snw_serial_ids is a flat,
+	 * unordered array with no per-unit tracking — so this is a note, not
+	 * an automatic action. Computed at render time from the order's own
+	 * refund records (not a hook), so it also surfaces a partial refund
+	 * that happened before this version was installed. The admin can
+	 * already set any serial's status by hand via the Edit form's
+	 * unrestricted status dropdown, so nothing else is needed beyond
+	 * pointing them at it.
+	 */
+	private function render_partial_refund_notice( int $item_id, \WC_Order_Item_Product $item ): void {
+		$order = $item->get_order();
+
+		if ( ! $order instanceof \WC_Order ) {
+			return;
+		}
+
+		$refunded_qty = abs( (float) $order->get_qty_refunded_for_item( $item_id ) );
+
+		if ( $refunded_qty <= 0 ) {
+			return;
+		}
+		?>
+		<p class="description" style="color: #b32d2e;">
+			<?php
+			printf(
+				/* translators: %d: number of units refunded */
+				esc_html__( '%d unit(s) of this item have been refunded. There is no way to know which specific serial number that corresponds to — please review the serial numbers above and update the correct one\'s status manually if needed.', 'serial-number-for-woocommerce' ),
+				(int) round( $refunded_qty )
+			);
+			?>
+		</p>
+		<?php
 	}
 }

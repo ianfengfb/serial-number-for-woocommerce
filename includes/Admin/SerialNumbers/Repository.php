@@ -164,6 +164,29 @@ final class Repository {
 	}
 
 	/**
+	 * Returns a serial to the pool: Available, order_id cleared. The
+	 * inverse of claim_available()/a fresh Assigned insert — used when an
+	 * order carrying the serial is cancelled or refunded and the serial
+	 * was never put to use (see Orders\RefundHandler, which only ever
+	 * calls this for a row still in Assigned status). Leaves product_id,
+	 * expires_at, and activated_at untouched.
+	 */
+	public static function release( int $id ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			self::table_name(),
+			array(
+				'status'   => Status::AVAILABLE,
+				'order_id' => null,
+			),
+			array( 'id' => $id ),
+			array( '%s', '%d' ),
+			array( '%d' )
+		);
+	}
+
+	/**
 	 * Counts a product's Available, unexpired serial numbers — the number
 	 * StockSync mirrors onto WooCommerce stock when that's switched on.
 	 */
@@ -330,6 +353,25 @@ final class Repository {
 		$wpdb->update(
 			self::table_name(),
 			array( 'status' => Status::DELETED ),
+			array( 'id' => $id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Marks a serial number Revoked — a warranty/license that had already
+	 * activated, deliberately withdrawn because its order was later
+	 * cancelled or refunded (see each Pro feature's own
+	 * revoke_serial()/CancellationHandler). Leaves activated_at/expires_at
+	 * alone, same "only flip the terminal status" shape as expire().
+	 */
+	public static function mark_revoked( int $id ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			self::table_name(),
+			array( 'status' => Status::REVOKED ),
 			array( 'id' => $id ),
 			array( '%s' ),
 			array( '%d' )

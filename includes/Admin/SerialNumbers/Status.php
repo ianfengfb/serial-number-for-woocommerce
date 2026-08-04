@@ -15,8 +15,13 @@ defined( 'ABSPATH' ) || exit;
  *               put to use.
  * - Activated   The customer has redeemed/registered it and it is in use.
  * - Expired     Past its expiry date, so no longer valid.
- * - Unavailable Deliberately withheld — revoked, refunded, faulty or reserved.
- *               Never handed out, but kept on record.
+ * - Unavailable Deliberately withheld — faulty, reserved, or otherwise parked
+ *               by hand. Never handed out, but kept on record.
+ * - Revoked     Deliberately withdrawn after an order was cancelled/refunded
+ *               (see Orders\RefundHandler and each Pro feature's own
+ *               CancellationHandler) — distinct from Unavailable so a seller
+ *               can tell "revoked by a refund" apart from a manual park.
+ *               Never handed out again automatically.
  * - Deleted     Soft-deleted via the list table's Delete action. A normal
  *               selectable status like any other (editable back to something
  *               else), kept rather than hard-deleted for audit/recoverability.
@@ -33,6 +38,7 @@ final class Status {
 	const ACTIVATED   = 'activated';
 	const EXPIRED     = 'expired';
 	const UNAVAILABLE = 'unavailable';
+	const REVOKED     = 'revoked';
 	const DELETED     = 'deleted';
 
 	/**
@@ -54,6 +60,7 @@ final class Status {
 			self::ACTIVATED   => __( 'Activated', 'serial-number-for-woocommerce' ),
 			self::EXPIRED     => __( 'Expired', 'serial-number-for-woocommerce' ),
 			self::UNAVAILABLE => __( 'Unavailable', 'serial-number-for-woocommerce' ),
+			self::REVOKED     => __( 'Revoked', 'serial-number-for-woocommerce' ),
 			self::DELETED     => __( 'Deleted', 'serial-number-for-woocommerce' ),
 		);
 	}

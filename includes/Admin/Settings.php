@@ -211,6 +211,15 @@ final class Settings extends \WC_Settings_Page {
 				),
 			),
 			array(
+				'title'             => __( 'Revoke on refund/cancellation', 'serial-number-for-woocommerce' ),
+				'desc'              => __( 'If a warranty has already started, revoke it when the order is later cancelled or refunded. Off by default — a refund doesn\'t retroactively cancel a warranty already protecting an item.', 'serial-number-for-woocommerce' ),
+				'id'                => 'snw_warranty_revoke_on_refund',
+				'type'              => 'checkbox',
+				'default'           => 'no',
+				'desc_tip'          => true,
+				'custom_attributes' => $is_pro ? array() : array( 'disabled' => 'disabled' ),
+			),
+			array(
 				'type' => 'sectionend',
 				'id'   => 'snw_warranty_settings',
 			),
@@ -239,6 +248,15 @@ final class Settings extends \WC_Settings_Page {
 					),
 					$is_pro ? array() : array( 'disabled' => 'disabled' )
 				),
+			),
+			array(
+				'title'             => __( 'Revoke on refund/cancellation', 'serial-number-for-woocommerce' ),
+				'desc'              => __( 'If a license has already activated, revoke it when the order is later cancelled or refunded. On by default — a license is tied to a specific purchase, so continued access after a refund is harder to justify.', 'serial-number-for-woocommerce' ),
+				'id'                => 'snw_license_revoke_on_refund',
+				'type'              => 'checkbox',
+				'default'           => 'yes',
+				'desc_tip'          => true,
+				'custom_attributes' => $is_pro ? array() : array( 'disabled' => 'disabled' ),
 			),
 			array(
 				'type' => 'sectionend',

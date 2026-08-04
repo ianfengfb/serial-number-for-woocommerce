@@ -3,6 +3,7 @@ namespace SerialNumberForWooCommerce\Pro\Warranty;
 
 use SerialNumberForWooCommerce\Admin\Products\ProductTab;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
+use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
 use SerialNumberForWooCommerce\Licensing;
 use SerialNumberForWooCommerce\Orders\Assigner;
 
@@ -83,6 +84,37 @@ final class Warranty {
 		 * @param int $serial_id
 		 */
 		do_action( 'snw_warranty_activated', $serial_id );
+
+		return true;
+	}
+
+	/**
+	 * Withdraws an already-started warranty — Revoked, leaving
+	 * activated_at/expires_at as the historical record. Only meaningful
+	 * for a serial that actually is Activated (an idempotency guard, same
+	 * shape as activate_serial()'s own); the store-wide
+	 * `snw_warranty_revoke_on_refund` setting decides whether a caller
+	 * ever calls this at all — see Pro\Warranty\CancellationHandler.
+	 */
+	public static function revoke_serial( int $serial_id ): bool {
+		if ( ! Licensing::is_pro_active() ) {
+			return false;
+		}
+
+		$serial = Repository::find( $serial_id );
+
+		if ( ! $serial || Status::ACTIVATED !== $serial->status ) {
+			return false;
+		}
+
+		Repository::mark_revoked( $serial_id );
+
+		/**
+		 * Fires after a warranty is revoked (order cancelled/refunded).
+		 *
+		 * @param int $serial_id
+		 */
+		do_action( 'snw_warranty_revoked', $serial_id );
 
 		return true;
 	}
