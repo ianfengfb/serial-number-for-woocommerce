@@ -130,6 +130,8 @@ includes/
                                      key's expires_at, reusing the same serial rather than issuing a new one
     LicenseKey/CustomerRenewal.php  Pro: renders the "Renew" link Renewal's flow starts from, on the
                                      customer's My Account order view
+    LicenseKey/Webhooks.php         Pro: adds license.activated/expired/delivered/renewed as topics on
+                                     WooCommerce's native Webhooks screen, for a seller's own system
     LicenseKey/Emails/
       AbstractLicenseEmail.php     Pro: shared WC_Email plumbing for the two per-serial license emails —
                                      intentionally a separate copy of Warranty's AbstractWarrantyEmail
@@ -623,8 +625,10 @@ Warranty's:
   activation (starting the validity countdown) are separate concerns, so a
   "customer activates manually" or "on Completed" product still delivers
   its key right away. Its template loops over every license-enabled item
-  (`LicenseDeliveryEmail::collect_licenses()`), pairing each product's keys
-  with that product's own `LicenseKey::instructions_for_product()` — the
+  (`LicenseKey::collect_for_order()` — shared with Webhooks' own
+  `license.delivered` payload, below, so the two can't drift apart on what
+  counts as "this order's licenses"), pairing each product's keys with
+  that product's own `LicenseKey::instructions_for_product()` — the
   seller's per-product activation steps/download links/support contact,
   entered as a plain textarea on the Serial Number tab (`#snw-license-fields`,
   rendered via `woocommerce_wp_textarea_input()` so it gets a `name`
@@ -711,6 +715,56 @@ time, regardless of quantity — `on_order()` doesn't multiply the
 extension by how many were bought, since a repeat "Renew" click is
 already guarded against reaching more than 1 in the cart in the first
 place.
+
+### Outbound webhooks (Pro)
+
+`Pro\LicenseKey\Webhooks` adds four topics — `license.activated`,
+`license.expired`, `license.delivered`, `license.renewed` — to
+WooCommerce's own Webhooks screen (WooCommerce > Settings > Advanced >
+Webhooks) rather than building a bespoke outbound-notification settings
+UI: a seller who wants their own external system notified picks one of
+these from the same Topic dropdown as any built-in WooCommerce topic
+("Order updated" etc.), gets the same delivery log/retry/signing/secret
+behaviour WooCommerce already provides for free, and there's nothing
+plugin-specific to learn. This is the outbound counterpart to Phase 4's
+inbound REST API — that one lets a seller's system tell this plugin
+something happened; this lets this plugin tell a seller's system
+something happened.
+
+Three of WooCommerce's own extension points make this possible for a
+resource it has no built-in knowledge of:
+
+- `woocommerce_webhook_topics` lists the four topics above in the Topic
+  dropdown — WooCommerce's own UI groups them under a "License" heading
+  automatically, derived from the `license.` prefix shared with every
+  built-in topic's own `resource.event` shape.
+- `woocommerce_webhook_topic_hooks` maps each topic to the WordPress
+  action that should trigger a delivery attempt: `snw_license_activated`,
+  `snw_license_delivered`, and `snw_license_renewed` map directly, since
+  each already only ever fires for a license (never a warranty) serial —
+  `snw_license_activated` is License-only by construction (Warranty fires
+  its own `snw_warranty_activated` instead), and `snw_license_delivered`/
+  `snw_license_renewed` are equally License-specific at the point they're
+  fired. `snw_serial_expired`, on the other hand, is the *shared* cron
+  event Warranty and License both flow through — mapping `license.expired`
+  straight to it would trigger a delivery attempt for every expired
+  Warranty serial too. `relay_expired()` listens on the shared event, checks
+  `LicenseKey::is_enabled_for_product()`, and only then re-fires a
+  License-only `snw_license_expired` action, which is what `license.expired`
+  actually maps to — the same problem `LicenseExpiredEmail::is_relevant()`
+  solves for the email, solved differently here since a webhook's
+  topic-to-hook mapping has no per-delivery filter to skip firing once
+  triggered.
+- `woocommerce_webhook_payload` builds the actual payload, since
+  WooCommerce's own payload builder only knows how to serialise its own
+  resources (order/product/customer/coupon) and returns `null` for
+  anything else. `build_payload()` only acts when `$resource` is
+  `'license'` (true for all four topics, since they share that prefix),
+  then calls `wc_get_webhook( $webhook_id )->get_event()` to tell them
+  apart — `'delivered'` gets an order-shaped payload
+  (`LicenseKey::collect_for_order()`, the same helper the delivery email's
+  template uses), everything else gets a serial-shaped one (key, product,
+  order ID, `activated_at`/`expires_at`).
 
 ## CSV export (Pro)
 
