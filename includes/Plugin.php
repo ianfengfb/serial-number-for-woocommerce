@@ -29,6 +29,7 @@ final class Plugin {
 		new Orders\CustomerItemDisplay();
 		new Orders\Ajax();
 		new Orders\PrintSlip();
+		new Orders\RefundHandler();
 
 		if ( Licensing::is_pro_active() ) {
 			new Pro\CustomRules\Ajax();
@@ -36,7 +37,9 @@ final class Plugin {
 			new Pro\Warranty\ActivationTrigger();
 			new Pro\Warranty\ExpiryChecker();
 			new Pro\Warranty\Extension();
+			new Pro\Warranty\CancellationHandler();
 			new Pro\LicenseKey\ActivationTrigger();
+			new Pro\LicenseKey\CancellationHandler();
 			new Pro\LicenseKey\CustomerActivation();
 			new Pro\LicenseKey\Ajax();
 			new Pro\LicenseKey\RestApi();

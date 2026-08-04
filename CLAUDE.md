@@ -101,6 +101,8 @@ includes/
     PrintSlip.php                   Free tier: renders the "Print Slip" link (or its unlicensed teaser) on
                                      the order edit screen's Order actions box — the feature itself is Pro
                                      (see Pro/PrintSlip/Printer.php); only the teaser lives here
+    RefundHandler.php               Free tier: releases a still-Assigned (never activated) serial back to
+                                     its pool when the order holding it is cancelled/fully refunded
   Pro/
     StockSync/StockSync.php         Pro: mirrors a product's Available pool count onto WC stock
     CustomRules/CustomRules.php     Pro: a product's own auto-generation rule, overriding the global one
@@ -115,6 +117,8 @@ includes/
     Warranty/ExpiryChecker.php      Pro: daily cron flipping Activated serials past their expires_at to Expired
     Warranty/Extension.php          Pro: lets a customer pay to extend a product's warranty when they buy it —
                                      an option on the product page, snapshotted onto the order line item
+    Warranty/CancellationHandler.php Pro: clears a pending delayed-activation cron and, if enabled, revokes an
+                                     Activated warranty when its order is cancelled/refunded
     Warranty/Emails/
       AbstractWarrantyEmail.php     Pro: shared WC_Email plumbing for the two warranty notification emails
       WarrantyActivatedEmail.php    Pro: customer email sent on the snw_warranty_activated action
@@ -128,6 +132,8 @@ includes/
                                      license delivery notification regardless of each item's own trigger
     LicenseKey/CustomerActivation.php Pro: renders the "Activate" button on the customer's My Account
                                      order view for a 'manual'-trigger product's still-unactivated keys
+    LicenseKey/CancellationHandler.php Pro: if enabled, revokes an Activated license when its order is
+                                     cancelled/refunded
     LicenseKey/Ajax.php             Pro: wp_ajax_snw_activate_license backing that button; enqueues
                                      assets/pro/js/license-activation.js only on the view-order endpoint
     LicenseKey/RestApi.php          Pro: registers POST /wp-json/snw/v1/license/activate for a seller's
@@ -190,8 +196,12 @@ assets/pro/js/admin-license-activation.js Pro: AJAX handler for the admin order 
   - `assigned` — attached to an order/customer, not used yet.
   - `activated` — redeemed/registered by the customer, in use.
   - `expired` — past `expires_at`, no longer valid.
-  - `unavailable` — deliberately withheld (revoked/refunded/faulty/reserved);
+  - `unavailable` — deliberately withheld by hand (faulty/reserved/parked);
     never handed out but kept on record.
+  - `revoked` — deliberately withdrawn after its order was cancelled/refunded
+    (see "Order refunds and cancellations" below) — distinct from
+    `unavailable` so a seller can tell the two apart; never handed out again
+    automatically.
   - `deleted` — soft-deleted via the list table's single-row Delete action or
     its "Delete" bulk action. A normal selectable status like any other (so
     it's editable back to something else too), kept rather than hard-deleted
@@ -1024,6 +1034,105 @@ serial-number-only.
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
 `class-*.php` prefixing.
+
+## Order refunds and cancellations
+
+Nothing about a refund/cancellation is customer-facing here — this is
+entirely about what happens to a serial number/license key's own record
+when the order carrying it no longer stands as a completed sale.
+
+**Full cancellation/refund (Free)**: `Orders\RefundHandler` hooks
+`woocommerce_order_status_cancelled` / `woocommerce_order_status_refunded`
+(WooCommerce's `status_transition()` chokepoint, fired once a status
+change is actually persisted regardless of what triggered it — same
+specific-hook convention `Pro\Warranty\ActivationTrigger` already uses
+for `_completed` rather than the generic `_status_changed`) and releases
+every one of the order's serials still in `Status::ASSIGNED` — i.e. never
+put to use — back to their pool via the new `Repository::release()`
+(Available, `order_id` cleared; the exact inverse of
+`claim_available()`/a fresh Assigned insert). Checking for `Assigned`
+specifically, not "anything other than Activated," makes this naturally
+idempotent against re-firing and leaves `Deleted`/`Unavailable`/`Revoked`
+rows alone. Stock is resynced once per distinct affected product
+(`StockSync::sync()`, gated behind `Licensing::is_pro_active()` like
+every other Free-code call site that touches it) — before this existed,
+a serial stuck at `Assigned` on a cancelled/refunded order was
+permanently excluded from `Repository::count_available()`, silently
+shrinking the sellable pool over time.
+
+**Already-`Activated` serials are a Pro policy decision**, since an
+Assigned-but-unused serial and an Activated warranty/license are very
+different situations — releasing the former back to the pool is always
+safe, but revoking the latter is a business call with opposite defaults
+per feature:
+
+- `Pro\Warranty\CancellationHandler`: revoking is **off by default**
+  (`snw_warranty_revoke_on_refund`) — a refund doesn't retroactively
+  cancel a warranty already protecting a physical/software item's usable
+  life, since that life doesn't change based on who currently owns it.
+- `Pro\LicenseKey\CancellationHandler`: revoking is **on by default**
+  (`snw_license_revoke_on_refund`) — a license is "this specific
+  purchase's right to use," so continued access after a refund is a
+  harder case to justify.
+
+Both call their feature's own new `revoke_serial()` (`Warranty`/`LicenseKey`
+— mirrors `activate_serial()`'s exact shape: an idempotency guard, one
+`Repository::mark_revoked()` write leaving `activated_at`/`expires_at` as
+the historical record, then a `do_action()` — `snw_warranty_revoked` /
+`snw_license_revoked` — for future email/webhook infra to listen on, same
+as `snw_warranty_activated`/`snw_license_activated` already are). No
+stock resync is needed for a revoke: `count_available()` only ever
+counted `Available` rows, and `Activated`→`Revoked` never touched that
+count either way. Both handlers walk the order's items via
+`Assigner::serial_ids()`/`serial_rows()` (order-item meta), not each
+row's own `order_id` — safe regardless of whether `RefundHandler`'s own
+callback already ran and mutated the row, since `release()` never
+touches the item-meta array.
+
+**`Status::REVOKED`** is a new, dedicated status (not a reuse of
+`Unavailable`) specifically so a seller can tell "revoked by a refund"
+apart from "I manually parked this" in the list/export — it required no
+changes anywhere except `Status.php` itself: the list table has no status
+filter (only `Status::label()` for display), and the Add/Edit form's
+status `<select>`, the CSV import validator (`RowParser::resolve_status()`),
+and the Settings default-status dropdown all already build their options
+from `Status::all()` directly.
+
+**A related bug, made newly reachable by `RefundHandler`'s existence**:
+`Pro\Warranty\ActivationTrigger`'s "days after Completed" mode schedules
+a `wp_schedule_single_event()` per serial. Once a still-Assigned serial
+can be released and reclaimed by a *different* order before that delay
+elapses, the original stale cron event — still pointing at the same
+serial ID — would fire and activate whatever order currently holds that
+serial, jumping its own trigger condition (e.g. activating an
+"on Completed" product before it was ever completed) and misattributing
+`snw_warranty_activated`. `Warranty::activate_serial()`'s idempotency
+guard (`if ( $serial->activated_at ) return false;`) does not prevent
+this — it only blocks re-activating an already-Activated serial, not a
+stale cron activating a *recycled* one that was never activated in the
+first place. `Pro\Warranty\CancellationHandler` fixes this
+unconditionally (independent of the revoke-on-refund toggle, since this
+is a correctness fix, not a policy choice): for every serial on a
+cancelled/refunded order, `wp_clear_scheduled_hook( ActivationTrigger::DELAYED_ACTIVATION_HOOK, array( $serial_id ) )`.
+License Key has no equivalent risk — it has no delayed-activation
+mechanism anywhere.
+
+**Partial refunds are never auto-resolved against a specific serial** —
+WooCommerce's partial-refund API has no notion of which physical unit was
+returned, and `_snw_serial_ids` is a flat, unordered array with no
+per-unit index, so there's no way to know which entry a given refunded
+quantity corresponds to. Rather than guessing (and risking releasing or
+revoking the wrong one), `ItemDisplay::render()` shows an inline notice
+whenever an item has a refunded quantity (`$order->get_qty_refunded_for_item()`,
+checked at render time rather than off a hook, so it also catches a
+partial refund that happened before this version was installed) pointing
+the seller at that item's serial list — the Add/Edit form's status
+`<select>` is already unrestricted, so a seller who's told where to look
+can set the right serial's status by hand with no further gap to fill.
+
+Known scope limit, documented rather than solved: restoring a cancelled/
+refunded order back to an active status never re-claims a released
+serial or reverses a revoke — the serial stays wherever it landed.
 
 ## Support
 
