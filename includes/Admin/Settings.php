@@ -213,6 +213,21 @@ final class Settings extends \WC_Settings_Page {
 				'type' => 'sectionend',
 				'id'   => 'snw_warranty_settings',
 			),
+
+			array(
+				'title' => __( 'License Key (Pro)', 'serial-number-for-woocommerce' ),
+				'type'  => 'title',
+				'desc'  => sprintf(
+					/* translators: %s: link to WooCommerce > Settings > Emails */
+					__( 'License length, activation trigger, and instructions are configured per product on its Serial Number tab. The "License Delivery", "License Activated", and "License Expired" customer emails — plus the admin notice for license activations — can be turned on/off and customised in %s.', 'serial-number-for-woocommerce' ),
+					'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=email' ) ) . '">' . esc_html__( 'WooCommerce > Settings > Emails', 'serial-number-for-woocommerce' ) . '</a>'
+				),
+				'id'    => 'snw_license_settings',
+			),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'snw_license_settings',
+			),
 		);
 	}
 }

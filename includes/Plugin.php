@@ -39,8 +39,12 @@ final class Plugin {
 			add_filter(
 				'woocommerce_email_classes',
 				function ( array $emails ): array {
-					$emails['SNW_Warranty_Activated_Email'] = new Pro\Warranty\Emails\WarrantyActivatedEmail();
-					$emails['SNW_Warranty_Expired_Email']   = new Pro\Warranty\Emails\WarrantyExpiredEmail();
+					$emails['SNW_Warranty_Activated_Email']      = new Pro\Warranty\Emails\WarrantyActivatedEmail();
+					$emails['SNW_Warranty_Expired_Email']        = new Pro\Warranty\Emails\WarrantyExpiredEmail();
+					$emails['SNW_License_Delivered_Email']       = new Pro\LicenseKey\Emails\LicenseDeliveryEmail();
+					$emails['SNW_License_Activated_Email']       = new Pro\LicenseKey\Emails\LicenseActivatedEmail();
+					$emails['SNW_License_Expired_Email']         = new Pro\LicenseKey\Emails\LicenseExpiredEmail();
+					$emails['SNW_License_Activated_Admin_Email'] = new Pro\LicenseKey\Emails\LicenseActivatedAdminEmail();
 
 					return $emails;
 				}

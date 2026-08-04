@@ -44,6 +44,7 @@ final class ActivationTrigger {
 	public function on_order_placed_object( $order ): void {
 		if ( $order instanceof \WC_Order ) {
 			$this->activate_matching( $order, 'immediate' );
+			$this->maybe_notify_delivery( $order );
 		}
 	}
 
@@ -52,6 +53,31 @@ final class ActivationTrigger {
 
 		if ( $order instanceof \WC_Order ) {
 			$this->activate_matching( $order, 'on_completed' );
+		}
+	}
+
+	/**
+	 * Fires the license delivery notification once per order, the moment
+	 * it's placed — regardless of each item's own activation trigger, since
+	 * the customer should receive their key(s) right away even if
+	 * activation itself is delayed or manual.
+	 */
+	private function maybe_notify_delivery( \WC_Order $order ): void {
+		if ( ! Licensing::is_pro_active() ) {
+			return;
+		}
+
+		foreach ( $order->get_items() as $item ) {
+			if ( ! $item instanceof \WC_Order_Item_Product ) {
+				continue;
+			}
+
+			$product_id = $item->get_product_id();
+
+			if ( $product_id && LicenseKey::is_enabled_for_product( $product_id ) ) {
+				do_action( 'snw_license_delivered', $order->get_id() );
+				return;
+			}
 		}
 	}
 
