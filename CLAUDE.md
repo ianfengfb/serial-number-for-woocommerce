@@ -62,10 +62,16 @@ includes/
   Install.php                       register_activation_hook target; creates/upgrades DB tables via dbDelta.
                                      Also register_deactivation_hook target: clears Warranty's cron events
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/delete/
-                                     bulk-generate/import routing; list view has a by-product / no-product filter)
+                                     bulk-generate/import/support routing; list view has a by-product / no-product
+                                     filter)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen
                                      rules, customer-visibility toggles for emails/account order view, Warranty
-                                     (Pro) activation-trigger settings)
+                                     (Pro) activation-trigger settings, Support section)
+  Admin/Support/Support.php         Free tier: "Contact Support" page (seller -> us, not customer-facing) — static
+                                     render() plus shared helpers (page_url(), support_email(), diagnostics())
+                                     that Admin/Settings' own Support section and Ajax both reuse
+  Admin/Support/Ajax.php            Free tier: wp_ajax_snw_submit_support_request backing that page's form,
+                                     sending a plain wp_mail() to Support::support_email()
   Admin/Products/ProductTab.php     Free tier: "Serial Number" tab, unlabeled Free area plus a "Pro Features"
                                      area (see Free/Pro architecture rules above for why the Pro controls'
                                      disabled/teaser markup lives here rather than under Pro/)
@@ -150,6 +156,8 @@ templates/emails/                   Warranty and License notification email temp
                                      theme-overridable the same way WooCommerce's own email templates are
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
+assets/js/support.js                 Enqueued only on the Support page; AJAX-submits the contact form,
+                                     reusing the same SNWAdmin localized object as admin.js
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
                                      own select2/selectWoo asset handles, which aren't guaranteed to be
                                      registered/enqueued on a third-party admin page across WC versions
@@ -944,6 +952,44 @@ serial-number-only.
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
 `class-*.php` prefixing.
+
+## Support
+
+"Contact Support" is support from the *seller* to *us* (the plugin
+developer) — feedback, a support request, a bug report — not a
+customer-facing helpdesk, so it's unconditionally Free tier: every seller
+should be able to reach us regardless of license status.
+
+Reachable from two places rather than one, since a second `<form>` can't
+cleanly nest inside the Settings page's own save form anyway: the primary,
+full contact form lives on its own page (`Admin\Menu` routes `?action=support`
+to `Support::render()`, and the list view's header always shows a "Support"
+page-title-action link to it, unlike Bulk Generate/Import/Export which are
+Pro-gated); `Admin\Settings`' own "Support" section is just a short
+description linking to that same page (`Support::page_url()`) plus the
+fallback email, not a duplicate form.
+
+`Admin\Support\Support` is stateless — every method is static, since
+rendering needs nothing but the current request — and holds the shared
+bits both entry points and the AJAX handler reuse: `support_email()` (the
+hardcoded destination, `felixdigitalshop@gmail.com` — not a setting, since
+there's no reason a seller would need to change our own inbox),
+`page_url()`, `types()` (the form's category dropdown: general question,
+bug report, feature request, license/billing), and `diagnostics()` (site
+URL, plugin version, license status, WordPress/WooCommerce/PHP versions —
+attached to every request automatically so a seller never has to describe
+their setup by hand).
+
+The form submits via AJAX (`Admin\Support\Ajax`, `wp_ajax_snw_submit_support_request`,
+reusing the same `snw_admin` nonce/`SNWAdmin` localized object `Admin\Menu`
+already prints on this page) to a plain `wp_mail()` — no external
+helpdesk/API, so there's nothing to configure on any host. `wp_mail()`
+returns `false` on a local send failure (e.g. no working mail transport on
+that particular host), which the AJAX response surfaces as an inline error
+naming the same fallback address — the page's own "Prefer email?" line
+underneath the form shows that address unconditionally too, not only on
+failure, so it's always visible as a fallback regardless of whether the
+form itself works.
 
 ## Branching strategy
 

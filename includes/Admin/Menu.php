@@ -5,6 +5,7 @@ use SerialNumberForWooCommerce\Admin\SerialNumbers\Ajax;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\FormController;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\ListTable;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
+use SerialNumberForWooCommerce\Admin\Support\Support;
 use SerialNumberForWooCommerce\Licensing;
 use SerialNumberForWooCommerce\Pro\BulkGenerate\Controller as BulkGenerateController;
 use SerialNumberForWooCommerce\Pro\Import\Controller as ImportController;
@@ -88,6 +89,16 @@ final class Menu {
 				true
 			);
 		}
+
+		if ( 'support' === $action ) {
+			wp_enqueue_script(
+				'snw-support',
+				SNW_PLUGIN_URL . 'assets/js/support.js',
+				array( 'jquery', 'snw-admin' ),
+				SNW_VERSION,
+				true
+			);
+		}
 	}
 
 	public function render_page(): void {
@@ -135,6 +146,11 @@ final class Menu {
 		if ( 'delete' === $action ) {
 			$id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
 			$this->handle_delete( $id );
+			return;
+		}
+
+		if ( 'support' === $action ) {
+			Support::render();
 			return;
 		}
 
@@ -346,6 +362,7 @@ final class Menu {
 					</span>
 				</span>
 			<?php endif; ?>
+			<a href="<?php echo esc_url( Support::page_url() ); ?>" class="page-title-action"><?php esc_html_e( 'Support', 'serial-number-for-woocommerce' ); ?></a>
 
 			<?php if ( isset( $_GET['snw_notice'] ) && 'added' === $_GET['snw_notice'] ) : ?>
 				<div class="notice notice-success is-dismissible">
