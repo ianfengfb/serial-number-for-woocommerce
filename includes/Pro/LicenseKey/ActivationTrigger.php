@@ -21,6 +21,9 @@ final class ActivationTrigger {
 
 	const PRIORITY = 20;
 
+	/** Order meta marking that snw_license_delivered has already fired for this order. */
+	const DELIVERY_NOTIFIED_META_KEY = '_snw_license_delivery_notified';
+
 	public function __construct() {
 		add_action( 'woocommerce_checkout_order_processed', array( $this, 'on_order_placed' ), self::PRIORITY, 3 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'on_order_placed_object' ), self::PRIORITY );
@@ -61,9 +64,16 @@ final class ActivationTrigger {
 	 * it's placed — regardless of each item's own activation trigger, since
 	 * the customer should receive their key(s) right away even if
 	 * activation itself is delayed or manual.
+	 *
+	 * Guarded by DELIVERY_NOTIFIED_META_KEY, set right before firing —
+	 * same "persist state, then fire" order as activate_serial()'s own
+	 * idempotency guard on both Warranty and LicenseKey — so if the
+	 * order-placed hooks were ever fired more than once for the same order
+	 * (a retried webhook, a re-processing third-party integration), the
+	 * customer never gets a second email re-exposing their key.
 	 */
 	private function maybe_notify_delivery( \WC_Order $order ): void {
-		if ( ! Licensing::is_pro_active() ) {
+		if ( ! Licensing::is_pro_active() || $order->get_meta( self::DELIVERY_NOTIFIED_META_KEY, true ) ) {
 			return;
 		}
 
@@ -75,6 +85,9 @@ final class ActivationTrigger {
 			$product_id = $item->get_product_id();
 
 			if ( $product_id && LicenseKey::is_enabled_for_product( $product_id ) ) {
+				$order->update_meta_data( self::DELIVERY_NOTIFIED_META_KEY, 'yes' );
+				$order->save_meta_data();
+
 				do_action( 'snw_license_delivered', $order->get_id() );
 				return;
 			}
