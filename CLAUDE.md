@@ -86,7 +86,9 @@ includes/
     ItemDisplay.php                 Free tier: shows an item's assigned serials plus the "Add Serial Number"
                                      control on the admin order edit screen
     CustomerItemDisplay.php         Free tier: shows an item's assigned serials to the customer — order
-                                     emails (HTML + plain text), the thank-you page, and My Account order view
+                                     emails (HTML + plain text), the thank-you page, and My Account order view;
+                                     labeled "License Key(s)" instead of "Serial Number(s)" when the item's
+                                     product has License (Pro) enabled
     Ajax.php                        wp_ajax_snw_add_order_item_serial backing the admin control; enqueues
                                      assets/js/order-item-serials.js only on the order edit screen (HPOS-
                                      or CPT-storage-aware via wc_get_page_screen_id())
@@ -107,7 +109,13 @@ includes/
     Warranty/Emails/
       AbstractWarrantyEmail.php     Pro: shared WC_Email plumbing for the two warranty notification emails
       WarrantyActivatedEmail.php    Pro: customer email sent on the snw_warranty_activated action
-      WarrantyExpiredEmail.php      Pro: customer email sent on the snw_warranty_expired action
+      WarrantyExpiredEmail.php      Pro: customer email sent on the generic snw_serial_expired action
+                                     (filtered by is_relevant() to only warranty-enabled products)
+    LicenseKey/LicenseKey.php       Pro: per-product license config (opt-in, length/period incl. lifetime,
+                                     per-product activation trigger) + activate_serial()
+    LicenseKey/ActivationTrigger.php Pro: activates a product's license serials per its own activation
+                                     trigger (immediate, or on order Completed) — a per-product choice,
+                                     unlike Warranty's store-wide setting
 templates/emails/                   Warranty notification email templates (HTML + templates/emails/plain/),
                                      theme-overridable the same way WooCommerce's own email templates are
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
@@ -158,16 +166,21 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
 - Per-product opt-in is the `_snw_enabled` post meta (`yes`/`no`) on the parent
   product — `ProductTab::META_KEY`. `_snw_manage_stock`
   (`ProductTab::MANAGE_STOCK_META_KEY`), `_snw_custom_rule_enabled`
-  (`ProductTab::CUSTOM_RULE_ENABLED_META_KEY`), and `_snw_warranty_enabled`
-  (`ProductTab::WARRANTY_ENABLED_META_KEY`) are further dependent
-  per-product meta, all Pro-gated — `ProductTab::save()` never persists
-  any of them as `yes` without a license — see Stock sync, Custom generation
-  rules, and Warranty below. `_snw_warranty_extension_enabled` and its
+  (`ProductTab::CUSTOM_RULE_ENABLED_META_KEY`), `_snw_warranty_enabled`
+  (`ProductTab::WARRANTY_ENABLED_META_KEY`), and `_snw_license_enabled`
+  (`ProductTab::LICENSE_ENABLED_META_KEY`) are further dependent per-product
+  meta, all Pro-gated — `ProductTab::save()` never persists any of them as
+  `yes` without a license — see Stock sync, Custom generation rules,
+  Warranty, and License Key below. `_snw_warranty_extension_enabled` and its
   length/period/price siblings follow the exact same shape, one level
-  further down (dependent on warranty itself being enabled). The meta-key
-  constants live on the Free `ProductTab` class (not the Pro classes that
-  act on them) precisely so Free code can render their teaser markup and
-  gate their persistence without referencing Pro.
+  further down (dependent on warranty itself being enabled); License's own
+  `_snw_license_length`/`_snw_license_period`/`_snw_license_activation_trigger`
+  are independent siblings of `_snw_license_enabled` rather than nested
+  under a second checkbox, since they're always relevant once licensing is
+  on (no further opt-in beneath them the way warranty's extension has).
+  The meta-key constants live on the Free `ProductTab` class (not the Pro
+  classes that act on them) precisely so Free code can render their teaser
+  markup and gate their persistence without referencing Pro.
 - Serials handed to an order live on the line item, not the order: the
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
@@ -320,6 +333,17 @@ activated — `Plugin::init()` only ever instantiates it when licensed, and
 scheduled from Free code" shape, just via `wp_schedule_single_event()`
 instead of a recurring one.
 
+This cron is shared infrastructure, not warranty-exclusive: the underlying
+query (`Repository::find_activated_past_expiry()`) has no notion of
+warranty vs. license, so it fires one generic `snw_serial_expired` action
+per expired row rather than a warranty-specific one. `WarrantyExpiredEmail`
+listens on that generic event but overrides `AbstractWarrantyEmail`'s
+`is_relevant()` hook (default `true`) to check
+`Warranty::is_enabled_for_product()` first, so it doesn't fire for an
+expired serial that's actually License-governed. `WarrantyActivatedEmail`
+needs no such check — `snw_warranty_activated` is only ever fired by
+`Warranty::activate_serial()` itself, so it's inherently warranty-only.
+
 Both cron hook names are duplicated as literal strings in
 `Install::WARRANTY_CRON_HOOKS`, used by the new `Install::deactivate()`
 (registered via `register_deactivation_hook` in the bootstrap file) to
@@ -384,14 +408,58 @@ there so it's discoverable from the Serial Number-specific settings too.
 
 Both are triggered by a plain action carrying just the serial ID —
 `snw_warranty_activated` (fired from `Warranty::activate_serial()`, right
-after `Repository::activate()`) and `snw_warranty_expired` (fired from
-`ExpiryChecker::check()`, right after `Repository::expire()`). Each
-email's `trigger()` re-resolves the serial and its order fresh from that
-ID (rather than the action passing the order/customer directly), so the
-same lookup logic is exercised identically whether the plugin is in the
-middle of an active request or a WP-Cron sweep. No recipient (order
-missing, or no billing email) simply skips sending — same "fail quiet, not
-loud" posture as everywhere else in the plugin that resolves an order.
+after `Repository::activate()`) and the generic `snw_serial_expired` (fired
+from `ExpiryChecker::check()`, right after `Repository::expire()` —
+`WarrantyExpiredEmail`'s `is_relevant()` override is what keeps it
+warranty-only despite the generic hook). Each email's `trigger()`
+re-resolves the serial and its order fresh from that ID (rather than the
+action passing the order/customer directly), so the same lookup logic is
+exercised identically whether the plugin is in the middle of an active
+request or a WP-Cron sweep. No recipient (order missing, or no billing
+email) simply skips sending — same "fail quiet, not loud" posture as
+everywhere else in the plugin that resolves an order.
+
+## License Key (Pro)
+
+`Pro\LicenseKey\LicenseKey` treats a product's serial numbers as license
+keys — its own per-product opt-in (`_snw_license_enabled`), independent of
+Warranty; a product can have either, both, or neither switched on. It
+deliberately reuses Warranty's underlying mechanics rather than
+duplicating them: `Status::ACTIVATED`/`EXPIRED`, `activated_at`/
+`expires_at`, `Repository::activate()`/`expire()`, and the shared expiry
+cron (see above) all work identically for a license as for a warranty — a
+serial's row has no idea which feature is driving it.
+
+Two differences from Warranty's settings shape:
+
+- **Lifetime licenses**: `LICENSE_PERIOD_META_KEY` accepts `'lifetime'` as
+  well as `'month'`/`'year'`. `LicenseKey::activate_serial()` leaves
+  `expires_at` as `null` for a lifetime license — `Repository::activate()`
+  takes a nullable `$expires_at` for exactly this (widened from a plain
+  `string` when this feature was added; existing warranty callers are
+  unaffected since they always pass a value). A lifetime license's
+  `expires_at IS NULL` means it can never match
+  `find_activated_past_expiry()`'s `expires_at <= now()` check, so it's
+  correctly never swept by the cron — no special-casing needed there.
+- **Per-product activation trigger**: `LICENSE_ACTIVATION_TRIGGER_META_KEY`
+  (`'immediate'` or `'on_completed'`) is set per-product on the Serial
+  Number tab, not as a single store-wide setting like Warranty's — licensed
+  products can have very different real-world activation needs (instant
+  digital delivery vs. needing a completed/paid order first). A third mode
+  (customer-initiated manual activation) is intentionally not offered yet,
+  same reasoning as Warranty's still-pending manual mode: no UI option
+  until the actual activation flow exists.
+
+`Pro\LicenseKey\ActivationTrigger` hooks both the checkout-processed events
+(classic + blocks/Store API) and `woocommerce_order_status_completed`, at
+priority 20 — explicitly later than `Assigner`'s own checkout hooks (which
+run at the default priority 10), so `Assigner::serial_ids()` already has
+this order's serials by the time it reads them, regardless of the two
+classes' instantiation order in `Plugin::init()`. For each hook firing, it
+walks the order's items, skips any whose product isn't
+`LicenseKey::is_enabled_for_product()` or whose own activation-trigger
+setting doesn't match that hook's mode, and activates the rest via
+`LicenseKey::activate_serial()`.
 
 ## CSV export (Pro)
 

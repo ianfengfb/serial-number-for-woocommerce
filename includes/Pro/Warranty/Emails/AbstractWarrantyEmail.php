@@ -33,6 +33,11 @@ abstract class AbstractWarrantyEmail extends \WC_Email {
 		$serial = Repository::find( $serial_id );
 		$order  = $serial && $serial->order_id ? wc_get_order( $serial->order_id ) : false;
 
+		if ( $serial && ! $this->is_relevant( $serial ) ) {
+			$this->restore_locale();
+			return;
+		}
+
 		if ( $serial && $order instanceof \WC_Order ) {
 			$this->object                          = $order;
 			$this->recipient                       = $order->get_billing_email();
@@ -68,5 +73,18 @@ abstract class AbstractWarrantyEmail extends \WC_Email {
 			'plain_text'         => $plain_text,
 			'email'              => $this,
 		);
+	}
+
+	/**
+	 * Whether this email should react to a given serial. Overridden by
+	 * WarrantyExpiredEmail, since it listens on the generic `snw_serial_expired`
+	 * event shared with License — WarrantyActivatedEmail doesn't need this,
+	 * as `snw_warranty_activated` is only ever fired for warranty-enabled
+	 * products in the first place.
+	 *
+	 * @param object $serial A snw_serial_numbers row.
+	 */
+	protected function is_relevant( object $serial ): bool {
+		return true;
 	}
 }

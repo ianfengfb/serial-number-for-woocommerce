@@ -1,12 +1,15 @@
 <?php
 namespace SerialNumberForWooCommerce\Pro\Warranty\Emails;
 
+use SerialNumberForWooCommerce\Pro\Warranty\Warranty;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Pro: notifies the customer when a serial number's warranty expires.
- * Fired from Pro\Warranty\ExpiryChecker via the `snw_warranty_expired`
- * action.
+ * Fired from Pro\Warranty\ExpiryChecker via the generic `snw_serial_expired`
+ * action (shared with License), so is_relevant() filters out anything that
+ * isn't actually warranty-governed.
  */
 final class WarrantyExpiredEmail extends AbstractWarrantyEmail {
 
@@ -18,7 +21,7 @@ final class WarrantyExpiredEmail extends AbstractWarrantyEmail {
 		$this->template_plain = 'emails/plain/warranty-expired.php';
 		$this->configure_common();
 
-		add_action( 'snw_warranty_expired', array( $this, 'trigger' ), 10, 1 );
+		add_action( 'snw_serial_expired', array( $this, 'trigger' ), 10, 1 );
 
 		parent::__construct();
 	}
@@ -29,5 +32,9 @@ final class WarrantyExpiredEmail extends AbstractWarrantyEmail {
 
 	public function get_default_heading(): string {
 		return __( 'Your warranty has expired', 'serial-number-for-woocommerce' );
+	}
+
+	protected function is_relevant( object $serial ): bool {
+		return Warranty::is_enabled_for_product( (int) $serial->product_id );
 	}
 }

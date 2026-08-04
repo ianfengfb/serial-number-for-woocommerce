@@ -337,15 +337,16 @@ final class Repository {
 	}
 
 	/**
-	 * Marks a serial number Activated (warranty starting now), with the
-	 * given expiry — a generic "set these three columns" primitive, agnostic
-	 * of how $expires_at was computed, so it's reusable by whichever
-	 * activation trigger calls it (order-completed, delayed, or a future
-	 * manual customer flow).
+	 * Marks a serial number Activated (warranty/license starting now), with
+	 * the given expiry — a generic "set these three columns" primitive,
+	 * agnostic of how $expires_at was computed, so it's reusable by whichever
+	 * activation trigger calls it (order-completed, delayed, a future manual
+	 * customer flow, or a lifetime license that never expires).
 	 *
-	 * @param string $expires_at MySQL datetime string.
+	 * @param string|null $expires_at MySQL datetime string, or null for a
+	 *                                license/warranty that never expires.
 	 */
-	public static function activate( int $id, string $expires_at ): void {
+	public static function activate( int $id, ?string $expires_at ): void {
 		global $wpdb;
 
 		$wpdb->update(
