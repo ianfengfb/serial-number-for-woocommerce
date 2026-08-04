@@ -53,6 +53,8 @@ final class ProductTab {
 
 	const LICENSE_ACTIVATION_TRIGGER_META_KEY = '_snw_license_activation_trigger';
 
+	const LICENSE_INSTRUCTIONS_META_KEY = '_snw_license_instructions';
+
 	public function __construct() {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'add_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'render_panel' ) );
@@ -426,6 +428,19 @@ final class ProductTab {
 							</select>
 							<?php echo wc_help_tip( __( 'When a license\'s validity period starts counting down.', 'serial-number-for-woocommerce' ) ); ?>
 						</p>
+						<?php
+						woocommerce_wp_textarea_input(
+							array(
+								'id'                => self::LICENSE_INSTRUCTIONS_META_KEY,
+								'label'             => __( 'License instructions', 'serial-number-for-woocommerce' ),
+								'description'       => __( 'Shown to the customer in their license delivery email — activation steps, download links, support contact, etc.', 'serial-number-for-woocommerce' ),
+								'desc_tip'          => true,
+								'value'             => get_post_meta( $post->ID, self::LICENSE_INSTRUCTIONS_META_KEY, true ),
+								'rows'              => 4,
+								'custom_attributes' => $is_pro ? array() : array( 'disabled' => 'disabled' ),
+							)
+						);
+						?>
 					</div>
 				</div>
 			</div>
@@ -705,6 +720,12 @@ final class ProductTab {
 
 			$activation_trigger = isset( $_POST[ self::LICENSE_ACTIVATION_TRIGGER_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::LICENSE_ACTIVATION_TRIGGER_META_KEY ] ) ) : '';
 			update_post_meta( $product_id, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, in_array( $activation_trigger, array( 'immediate', 'on_completed' ), true ) ? $activation_trigger : 'immediate' );
+
+			update_post_meta(
+				$product_id,
+				self::LICENSE_INSTRUCTIONS_META_KEY,
+				isset( $_POST[ self::LICENSE_INSTRUCTIONS_META_KEY ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ self::LICENSE_INSTRUCTIONS_META_KEY ] ) ) : ''
+			);
 		}
 
 		// Fallback for whatever's still in the bulk-add textarea at save time —

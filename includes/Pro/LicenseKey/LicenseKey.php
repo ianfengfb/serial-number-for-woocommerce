@@ -48,6 +48,15 @@ final class LicenseKey {
 	}
 
 	/**
+	 * The seller's own instructions for this product's license, shown to
+	 * the customer in their delivery email — activation steps, download
+	 * links, support contact, etc. Empty string if none set.
+	 */
+	public static function instructions_for_product( int $product_id ): string {
+		return (string) get_post_meta( $product_id, ProductTab::LICENSE_INSTRUCTIONS_META_KEY, true );
+	}
+
+	/**
 	 * Starts a license now: Activated, with expires_at computed from the
 	 * product's duration_for_product() — or left null for a lifetime
 	 * license. Idempotent — a serial that already has an activated_at is
