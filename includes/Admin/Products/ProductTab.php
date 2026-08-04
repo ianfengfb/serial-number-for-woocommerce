@@ -67,7 +67,12 @@ final class ProductTab {
 		$tabs['snw_serial_number'] = array(
 			'label'    => __( 'Serial Number', 'serial-number-for-woocommerce' ),
 			'target'   => 'snw_product_data',
-			'class'    => array(),
+			// Hidden for Grouped/External via WooCommerce's own tab-visibility
+			// convention — neither can ever generate an order line item on
+			// this site (Grouped has no price/cart button of its own;
+			// External redirects offsite to buy), so "Enable serial numbers"
+			// on either is dead UI that could never do anything.
+			'class'    => array( 'show_if_simple', 'show_if_variable' ),
 			'priority' => 70,
 		);
 
@@ -137,18 +142,26 @@ final class ProductTab {
 				<div class="options_group">
 					<?php if ( $is_pro ) : ?>
 						<?php
+						// hide_if_variable: each variation manages its own stock
+						// separately in WooCommerce (inside the Variations tab's
+						// repeater) — this checkbox's #_stock-based sync can't
+						// target the right field(s) for a Variable product, so
+						// it's scoped to Simple only. save() enforces this
+						// server-side too, since hiding via CSS doesn't stop a
+						// previously-checked value from still submitting.
 						woocommerce_wp_checkbox(
 							array(
-								'id'          => self::MANAGE_STOCK_META_KEY,
-								'label'       => __( 'Manage product stock with Serial Number', 'serial-number-for-woocommerce' ),
-								'description' => __( "Keeps this product's stock quantity equal to the number of Available serial numbers in its pool. Saving with this on sets the stock to match right away, and keeps it in sync as serial numbers are added, generated, or assigned to orders.", 'serial-number-for-woocommerce' ),
-								'desc_tip'    => true,
-								'value'       => get_post_meta( $post->ID, self::MANAGE_STOCK_META_KEY, true ),
+								'id'            => self::MANAGE_STOCK_META_KEY,
+								'label'         => __( 'Manage product stock with Serial Number', 'serial-number-for-woocommerce' ),
+								'description'   => __( "Keeps this product's stock quantity equal to the number of Available serial numbers in its pool. Saving with this on sets the stock to match right away, and keeps it in sync as serial numbers are added, generated, or assigned to orders.", 'serial-number-for-woocommerce' ),
+								'desc_tip'      => true,
+								'value'         => get_post_meta( $post->ID, self::MANAGE_STOCK_META_KEY, true ),
+								'wrapper_class' => 'hide_if_variable',
 							)
 						);
 						?>
 					<?php else : ?>
-						<p class="form-field">
+						<p class="form-field hide_if_variable">
 							<label for="<?php echo esc_attr( self::MANAGE_STOCK_META_KEY ); ?>">
 								<?php esc_html_e( 'Manage product stock with Serial Number', 'serial-number-for-woocommerce' ); ?>
 							</label>
@@ -667,7 +680,18 @@ final class ProductTab {
 	}
 
 	public function save( int $product_id ): void {
-		$enabled = isset( $_POST[ self::META_KEY ] ) ? 'yes' : 'no';
+		$product                = wc_get_product( $product_id );
+		$is_grouped_or_external = $product && $product->is_type( array( 'grouped', 'external' ) );
+		$is_variable            = $product && $product->is_type( 'variable' );
+
+		// Grouped/External products can never actually be ordered on this
+		// site (see add_tab()'s show_if_simple/show_if_variable tab
+		// classes) — this is the server-side guarantee behind that: the
+		// tab's own CSS-hiding doesn't stop a previously-checked value
+		// from still submitting once the product type is switched, so
+		// "enabled" is never persisted for a type serial numbers can never
+		// apply to, regardless of what was posted.
+		$enabled = ( ! $is_grouped_or_external && isset( $_POST[ self::META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::META_KEY, $enabled );
 
 		$is_pro = Licensing::is_pro_active();
@@ -675,7 +699,11 @@ final class ProductTab {
 		// Pro-only: never persist "yes" without a license, even if the field
 		// were somehow submitted (it's rendered disabled when unlicensed, so
 		// browsers don't submit it, but this keeps the meta honest either way).
-		$manage_stock = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::MANAGE_STOCK_META_KEY ] ) ) ? 'yes' : 'no';
+		// Also never for a Variable product — each variation manages its own
+		// stock separately in WooCommerce, so this checkbox's #_stock-based
+		// sync can't work correctly at the parent level (see the matching
+		// hide_if_variable wrapper_class in render_panel()).
+		$manage_stock = ( 'yes' === $enabled && $is_pro && ! $is_variable && isset( $_POST[ self::MANAGE_STOCK_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::MANAGE_STOCK_META_KEY, $manage_stock );
 
 		$custom_rule_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::CUSTOM_RULE_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
