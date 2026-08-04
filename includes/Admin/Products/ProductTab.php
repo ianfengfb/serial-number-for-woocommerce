@@ -367,65 +367,65 @@ final class ProductTab {
 								<?php echo wc_help_tip( __( 'Added to the product price when a customer chooses to purchase the extension.', 'serial-number-for-woocommerce' ) ); ?>
 							</p>
 						</div>
+					</div>
 
-						<?php if ( $is_pro ) : ?>
-							<?php
-							woocommerce_wp_checkbox(
-								array(
-									'id'          => self::LICENSE_ENABLED_META_KEY,
-									'label'       => __( 'Enable license', 'serial-number-for-woocommerce' ),
-									'description' => __( 'Treats each serial number assigned for this product as a license key, shown to the customer as such instead of a serial number.', 'serial-number-for-woocommerce' ),
-									'desc_tip'    => true,
-									'value'       => get_post_meta( $post->ID, self::LICENSE_ENABLED_META_KEY, true ),
-								)
-							);
-							?>
-						<?php else : ?>
-							<p class="form-field">
-								<label for="<?php echo esc_attr( self::LICENSE_ENABLED_META_KEY ); ?>">
-									<?php esc_html_e( 'Enable license', 'serial-number-for-woocommerce' ); ?>
-								</label>
-								<input
-									type="checkbox"
-									id="<?php echo esc_attr( self::LICENSE_ENABLED_META_KEY ); ?>"
-									disabled
-									<?php checked( get_post_meta( $post->ID, self::LICENSE_ENABLED_META_KEY, true ), 'yes' ); ?>
-								/>
-								<?php echo wc_help_tip( __( 'Upgrade to Pro to treat this product\'s serial numbers as license keys.', 'serial-number-for-woocommerce' ) ); ?>
-							</p>
-						<?php endif; ?>
+					<?php if ( $is_pro ) : ?>
+						<?php
+						woocommerce_wp_checkbox(
+							array(
+								'id'          => self::LICENSE_ENABLED_META_KEY,
+								'label'       => __( 'This is a license product', 'serial-number-for-woocommerce' ),
+								'description' => __( 'Treats each serial number assigned for this product as a license key, shown to the customer as such instead of a serial number.', 'serial-number-for-woocommerce' ),
+								'desc_tip'    => true,
+								'value'       => get_post_meta( $post->ID, self::LICENSE_ENABLED_META_KEY, true ),
+							)
+						);
+						?>
+					<?php else : ?>
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::LICENSE_ENABLED_META_KEY ); ?>">
+								<?php esc_html_e( 'This is a license product', 'serial-number-for-woocommerce' ); ?>
+							</label>
+							<input
+								type="checkbox"
+								id="<?php echo esc_attr( self::LICENSE_ENABLED_META_KEY ); ?>"
+								disabled
+								<?php checked( get_post_meta( $post->ID, self::LICENSE_ENABLED_META_KEY, true ), 'yes' ); ?>
+							/>
+							<?php echo wc_help_tip( __( 'Upgrade to Pro to treat this product\'s serial numbers as license keys.', 'serial-number-for-woocommerce' ) ); ?>
+						</p>
+					<?php endif; ?>
 
-						<div id="snw-license-fields">
-							<p class="form-field">
-								<label for="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"><?php esc_html_e( 'License length', 'serial-number-for-woocommerce' ); ?></label>
-								<input
-									type="number"
-									id="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"
-									name="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"
-									min="1"
-									step="1"
-									class="small-text"
-									value="<?php echo esc_attr( get_post_meta( $post->ID, self::LICENSE_LENGTH_META_KEY, true ) ?: '1' ); ?>"
-									<?php disabled( ! $is_pro ); ?>
-								/>
-								<select id="<?php echo esc_attr( self::LICENSE_PERIOD_META_KEY ); ?>" name="<?php echo esc_attr( self::LICENSE_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
-									<?php $license_period = get_post_meta( $post->ID, self::LICENSE_PERIOD_META_KEY, true ) ?: 'year'; ?>
-									<option value="month" <?php selected( $license_period, 'month' ); ?>><?php esc_html_e( 'Month(s)', 'serial-number-for-woocommerce' ); ?></option>
-									<option value="year" <?php selected( $license_period, 'year' ); ?>><?php esc_html_e( 'Year(s)', 'serial-number-for-woocommerce' ); ?></option>
-									<option value="lifetime" <?php selected( $license_period, 'lifetime' ); ?>><?php esc_html_e( 'Lifetime (never expires)', 'serial-number-for-woocommerce' ); ?></option>
-								</select>
-								<?php echo wc_help_tip( __( 'How long a license lasts once activated. Lifetime licenses never expire.', 'serial-number-for-woocommerce' ) ); ?>
-							</p>
-							<p class="form-field">
-								<label for="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>"><?php esc_html_e( 'Activation trigger', 'serial-number-for-woocommerce' ); ?></label>
-								<select id="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>" name="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
-									<?php $activation_trigger = get_post_meta( $post->ID, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, true ) ?: 'immediate'; ?>
-									<option value="immediate" <?php selected( $activation_trigger, 'immediate' ); ?>><?php esc_html_e( 'Immediately at purchase', 'serial-number-for-woocommerce' ); ?></option>
-									<option value="on_completed" <?php selected( $activation_trigger, 'on_completed' ); ?>><?php esc_html_e( 'When the order is marked Completed', 'serial-number-for-woocommerce' ); ?></option>
-								</select>
-								<?php echo wc_help_tip( __( 'When a license\'s validity period starts counting down.', 'serial-number-for-woocommerce' ) ); ?>
-							</p>
-						</div>
+					<div id="snw-license-fields">
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"><?php esc_html_e( 'License length', 'serial-number-for-woocommerce' ); ?></label>
+							<input
+								type="number"
+								id="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"
+								name="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"
+								min="1"
+								step="1"
+								class="small-text"
+								value="<?php echo esc_attr( get_post_meta( $post->ID, self::LICENSE_LENGTH_META_KEY, true ) ?: '1' ); ?>"
+								<?php disabled( ! $is_pro ); ?>
+							/>
+							<select id="<?php echo esc_attr( self::LICENSE_PERIOD_META_KEY ); ?>" name="<?php echo esc_attr( self::LICENSE_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+								<?php $license_period = get_post_meta( $post->ID, self::LICENSE_PERIOD_META_KEY, true ) ?: 'year'; ?>
+								<option value="month" <?php selected( $license_period, 'month' ); ?>><?php esc_html_e( 'Month(s)', 'serial-number-for-woocommerce' ); ?></option>
+								<option value="year" <?php selected( $license_period, 'year' ); ?>><?php esc_html_e( 'Year(s)', 'serial-number-for-woocommerce' ); ?></option>
+								<option value="lifetime" <?php selected( $license_period, 'lifetime' ); ?>><?php esc_html_e( 'Lifetime (never expires)', 'serial-number-for-woocommerce' ); ?></option>
+							</select>
+							<?php echo wc_help_tip( __( 'How long a license lasts once activated. Lifetime licenses never expire.', 'serial-number-for-woocommerce' ) ); ?>
+						</p>
+						<p class="form-field">
+							<label for="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>"><?php esc_html_e( 'Activation trigger', 'serial-number-for-woocommerce' ); ?></label>
+							<select id="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>" name="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+								<?php $activation_trigger = get_post_meta( $post->ID, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, true ) ?: 'immediate'; ?>
+								<option value="immediate" <?php selected( $activation_trigger, 'immediate' ); ?>><?php esc_html_e( 'Immediately at purchase', 'serial-number-for-woocommerce' ); ?></option>
+								<option value="on_completed" <?php selected( $activation_trigger, 'on_completed' ); ?>><?php esc_html_e( 'When the order is marked Completed', 'serial-number-for-woocommerce' ); ?></option>
+							</select>
+							<?php echo wc_help_tip( __( 'When a license\'s validity period starts counting down.', 'serial-number-for-woocommerce' ) ); ?>
+						</p>
 					</div>
 				</div>
 			</div>
