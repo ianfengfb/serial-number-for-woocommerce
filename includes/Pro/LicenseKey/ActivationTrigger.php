@@ -1,0 +1,83 @@
+<?php
+namespace SerialNumberForWooCommerce\Pro\LicenseKey;
+
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Orders\Assigner;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Pro: activates a product's license-key serials per that product's own
+ * "Activation trigger" setting (immediate, or on order Completed) — unlike
+ * Warranty's activation trigger, this is a per-product choice rather than a
+ * single store-wide setting, since licensed products can have very
+ * different real-world activation needs.
+ *
+ * Hooked at a later priority than Assigner's own checkout hooks so
+ * Assigner::serial_ids() already has this order's serials by the time we
+ * read them, regardless of registration order in Plugin::init().
+ */
+final class ActivationTrigger {
+
+	const PRIORITY = 20;
+
+	public function __construct() {
+		add_action( 'woocommerce_checkout_order_processed', array( $this, 'on_order_placed' ), self::PRIORITY, 3 );
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'on_order_placed_object' ), self::PRIORITY );
+		add_action( 'woocommerce_blocks_checkout_order_processed', array( $this, 'on_order_placed_object' ), self::PRIORITY );
+		add_action( 'woocommerce_order_status_completed', array( $this, 'on_order_completed' ), self::PRIORITY );
+	}
+
+	/**
+	 * @param mixed $order Third arg is the WC_Order on WC 3.0+, but stays loose
+	 *                     because the hook has historically passed less.
+	 */
+	public function on_order_placed( int $order_id, array $posted_data, $order = null ): void {
+		$order = $order instanceof \WC_Order ? $order : wc_get_order( $order_id );
+
+		$this->on_order_placed_object( $order );
+	}
+
+	/**
+	 * @param mixed $order WC_Order, or anything else if a third party mis-fires the hook.
+	 */
+	public function on_order_placed_object( $order ): void {
+		if ( $order instanceof \WC_Order ) {
+			$this->activate_matching( $order, 'immediate' );
+		}
+	}
+
+	public function on_order_completed( int $order_id ): void {
+		$order = wc_get_order( $order_id );
+
+		if ( $order instanceof \WC_Order ) {
+			$this->activate_matching( $order, 'on_completed' );
+		}
+	}
+
+	private function activate_matching( \WC_Order $order, string $trigger_mode ): void {
+		if ( ! Licensing::is_pro_active() ) {
+			return;
+		}
+
+		foreach ( $order->get_items() as $item ) {
+			if ( ! $item instanceof \WC_Order_Item_Product ) {
+				continue;
+			}
+
+			$product_id = $item->get_product_id();
+
+			if ( ! $product_id || ! LicenseKey::is_enabled_for_product( $product_id ) ) {
+				continue;
+			}
+
+			if ( LicenseKey::activation_trigger_for_product( $product_id ) !== $trigger_mode ) {
+				continue;
+			}
+
+			foreach ( Assigner::serial_ids( $item ) as $serial_id ) {
+				LicenseKey::activate_serial( $serial_id );
+			}
+		}
+	}
+}

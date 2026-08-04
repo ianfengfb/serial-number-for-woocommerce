@@ -44,6 +44,8 @@ class ComposerStaticInit71078b64631c62ac7ba6e3702d200d7c
         'SerialNumberForWooCommerce\\Pro\\Export\\Exporter' => __DIR__ . '/../..' . '/includes/Pro/Export/Exporter.php',
         'SerialNumberForWooCommerce\\Pro\\Import\\Controller' => __DIR__ . '/../..' . '/includes/Pro/Import/Controller.php',
         'SerialNumberForWooCommerce\\Pro\\Import\\RowParser' => __DIR__ . '/../..' . '/includes/Pro/Import/RowParser.php',
+        'SerialNumberForWooCommerce\\Pro\\LicenseKey\\ActivationTrigger' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/ActivationTrigger.php',
+        'SerialNumberForWooCommerce\\Pro\\LicenseKey\\LicenseKey' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/LicenseKey.php',
         'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => __DIR__ . '/../..' . '/includes/Pro/StockSync/StockSync.php',
         'SerialNumberForWooCommerce\\Pro\\Warranty\\ActivationTrigger' => __DIR__ . '/../..' . '/includes/Pro/Warranty/ActivationTrigger.php',
         'SerialNumberForWooCommerce\\Pro\\Warranty\\Emails\\AbstractWarrantyEmail' => __DIR__ . '/../..' . '/includes/Pro/Warranty/Emails/AbstractWarrantyEmail.php',

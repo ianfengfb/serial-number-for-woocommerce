@@ -45,6 +45,14 @@ final class ProductTab {
 
 	const WARRANTY_EXTENSION_PRICE_META_KEY = '_snw_warranty_extension_price';
 
+	const LICENSE_ENABLED_META_KEY = '_snw_license_enabled';
+
+	const LICENSE_LENGTH_META_KEY = '_snw_license_length';
+
+	const LICENSE_PERIOD_META_KEY = '_snw_license_period';
+
+	const LICENSE_ACTIVATION_TRIGGER_META_KEY = '_snw_license_activation_trigger';
+
 	public function __construct() {
 		add_filter( 'woocommerce_product_data_tabs', array( $this, 'add_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( $this, 'render_panel' ) );
@@ -359,6 +367,65 @@ final class ProductTab {
 								<?php echo wc_help_tip( __( 'Added to the product price when a customer chooses to purchase the extension.', 'serial-number-for-woocommerce' ) ); ?>
 							</p>
 						</div>
+
+						<?php if ( $is_pro ) : ?>
+							<?php
+							woocommerce_wp_checkbox(
+								array(
+									'id'          => self::LICENSE_ENABLED_META_KEY,
+									'label'       => __( 'Enable license', 'serial-number-for-woocommerce' ),
+									'description' => __( 'Treats each serial number assigned for this product as a license key, shown to the customer as such instead of a serial number.', 'serial-number-for-woocommerce' ),
+									'desc_tip'    => true,
+									'value'       => get_post_meta( $post->ID, self::LICENSE_ENABLED_META_KEY, true ),
+								)
+							);
+							?>
+						<?php else : ?>
+							<p class="form-field">
+								<label for="<?php echo esc_attr( self::LICENSE_ENABLED_META_KEY ); ?>">
+									<?php esc_html_e( 'Enable license', 'serial-number-for-woocommerce' ); ?>
+								</label>
+								<input
+									type="checkbox"
+									id="<?php echo esc_attr( self::LICENSE_ENABLED_META_KEY ); ?>"
+									disabled
+									<?php checked( get_post_meta( $post->ID, self::LICENSE_ENABLED_META_KEY, true ), 'yes' ); ?>
+								/>
+								<?php echo wc_help_tip( __( 'Upgrade to Pro to treat this product\'s serial numbers as license keys.', 'serial-number-for-woocommerce' ) ); ?>
+							</p>
+						<?php endif; ?>
+
+						<div id="snw-license-fields">
+							<p class="form-field">
+								<label for="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"><?php esc_html_e( 'License length', 'serial-number-for-woocommerce' ); ?></label>
+								<input
+									type="number"
+									id="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"
+									name="<?php echo esc_attr( self::LICENSE_LENGTH_META_KEY ); ?>"
+									min="1"
+									step="1"
+									class="small-text"
+									value="<?php echo esc_attr( get_post_meta( $post->ID, self::LICENSE_LENGTH_META_KEY, true ) ?: '1' ); ?>"
+									<?php disabled( ! $is_pro ); ?>
+								/>
+								<select id="<?php echo esc_attr( self::LICENSE_PERIOD_META_KEY ); ?>" name="<?php echo esc_attr( self::LICENSE_PERIOD_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+									<?php $license_period = get_post_meta( $post->ID, self::LICENSE_PERIOD_META_KEY, true ) ?: 'year'; ?>
+									<option value="month" <?php selected( $license_period, 'month' ); ?>><?php esc_html_e( 'Month(s)', 'serial-number-for-woocommerce' ); ?></option>
+									<option value="year" <?php selected( $license_period, 'year' ); ?>><?php esc_html_e( 'Year(s)', 'serial-number-for-woocommerce' ); ?></option>
+									<option value="lifetime" <?php selected( $license_period, 'lifetime' ); ?>><?php esc_html_e( 'Lifetime (never expires)', 'serial-number-for-woocommerce' ); ?></option>
+								</select>
+								<?php echo wc_help_tip( __( 'How long a license lasts once activated. Lifetime licenses never expire.', 'serial-number-for-woocommerce' ) ); ?>
+							</p>
+							<p class="form-field">
+								<label for="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>"><?php esc_html_e( 'Activation trigger', 'serial-number-for-woocommerce' ); ?></label>
+								<select id="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>" name="<?php echo esc_attr( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>" <?php disabled( ! $is_pro ); ?>>
+									<?php $activation_trigger = get_post_meta( $post->ID, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, true ) ?: 'immediate'; ?>
+									<option value="immediate" <?php selected( $activation_trigger, 'immediate' ); ?>><?php esc_html_e( 'Immediately at purchase', 'serial-number-for-woocommerce' ); ?></option>
+									<option value="on_completed" <?php selected( $activation_trigger, 'on_completed' ); ?>><?php esc_html_e( 'When the order is marked Completed', 'serial-number-for-woocommerce' ); ?></option>
+								</select>
+								<?php echo wc_help_tip( __( 'When a license\'s validity period starts counting down.', 'serial-number-for-woocommerce' ) ); ?>
+							</p>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -392,6 +459,18 @@ final class ProductTab {
 				function snwToggleWarrantyExtensionFields() {
 					$( '#snw-warranty-extension-fields' ).toggle(
 						snwIsPro && $( '#<?php echo esc_js( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>' ).is( ':checked' )
+					);
+				}
+
+				function snwToggleLicenseFields() {
+					$( '#snw-license-fields' ).toggle(
+						snwIsPro && $( '#<?php echo esc_js( self::LICENSE_ENABLED_META_KEY ); ?>' ).is( ':checked' )
+					);
+				}
+
+				function snwToggleLicenseLengthField() {
+					$( '#<?php echo esc_js( self::LICENSE_LENGTH_META_KEY ); ?>' ).closest( 'p.form-field' ).toggle(
+						'lifetime' !== $( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).val()
 					);
 				}
 
@@ -437,11 +516,15 @@ final class ProductTab {
 				$( '#<?php echo esc_js( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleCustomRuleFields );
 				$( '#<?php echo esc_js( self::WARRANTY_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleWarrantyFields );
 				$( '#<?php echo esc_js( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleWarrantyExtensionFields );
+				$( '#<?php echo esc_js( self::LICENSE_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleLicenseFields );
+				$( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).on( 'change', snwToggleLicenseLengthField );
 
 				snwToggleConditionalFields();
 				snwToggleCustomRuleFields();
 				snwToggleWarrantyFields();
 				snwToggleWarrantyExtensionFields();
+				snwToggleLicenseFields();
+				snwToggleLicenseLengthField();
 				snwToggleStockQuantityLock();
 
 				$( '#snw-add-bulk-serials' ).on( 'click', function ( e ) {
@@ -569,6 +652,9 @@ final class ProductTab {
 		$warranty_extension_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::WARRANTY_EXTENSION_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::WARRANTY_EXTENSION_ENABLED_META_KEY, $warranty_extension_enabled );
 
+		$license_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::LICENSE_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
+		update_post_meta( $product_id, self::LICENSE_ENABLED_META_KEY, $license_enabled );
+
 		// The rule field values themselves are kept even while the checkbox is
 		// off, so re-enabling it later doesn't lose what was typed in — only
 		// CustomRules::is_enabled_for_product() gates whether they take effect.
@@ -607,6 +693,18 @@ final class ProductTab {
 
 			$extension_price = isset( $_POST[ self::WARRANTY_EXTENSION_PRICE_META_KEY ] ) ? wc_format_decimal( wp_unslash( $_POST[ self::WARRANTY_EXTENSION_PRICE_META_KEY ] ) ) : '0';
 			update_post_meta( $product_id, self::WARRANTY_EXTENSION_PRICE_META_KEY, $extension_price );
+
+			// Same "keep the value even while disabled" treatment as the
+			// warranty fields above — only LicenseKey::is_enabled_for_product()
+			// gates whether these take effect.
+			$license_length = isset( $_POST[ self::LICENSE_LENGTH_META_KEY ] ) ? absint( $_POST[ self::LICENSE_LENGTH_META_KEY ] ) : 0;
+			update_post_meta( $product_id, self::LICENSE_LENGTH_META_KEY, $license_length ? (string) $license_length : '1' );
+
+			$license_period = isset( $_POST[ self::LICENSE_PERIOD_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::LICENSE_PERIOD_META_KEY ] ) ) : '';
+			update_post_meta( $product_id, self::LICENSE_PERIOD_META_KEY, in_array( $license_period, array( 'month', 'year', 'lifetime' ), true ) ? $license_period : 'year' );
+
+			$activation_trigger = isset( $_POST[ self::LICENSE_ACTIVATION_TRIGGER_META_KEY ] ) ? sanitize_key( wp_unslash( $_POST[ self::LICENSE_ACTIVATION_TRIGGER_META_KEY ] ) ) : '';
+			update_post_meta( $product_id, self::LICENSE_ACTIVATION_TRIGGER_META_KEY, in_array( $activation_trigger, array( 'immediate', 'on_completed' ), true ) ? $activation_trigger : 'immediate' );
 		}
 
 		// Fallback for whatever's still in the bulk-add textarea at save time —

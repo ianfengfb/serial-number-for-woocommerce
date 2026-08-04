@@ -1,6 +1,9 @@
 <?php
 namespace SerialNumberForWooCommerce\Orders;
 
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\LicenseKey\LicenseKey;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -12,6 +15,9 @@ defined( 'ABSPATH' ) || exit;
  * order-details page) has its own on/off setting in WooCommerce > Settings >
  * Serial Numbers, both defaulting to on. The order-details page also shows
  * each serial's expiry date, if it has one — emails stay serial-number-only.
+ * For a License-enabled product (Pro), the label reads "License Key(s)"
+ * instead of "Serial Number(s)" so customers aren't confused by internal
+ * terminology — same value, different customer-facing word for it.
  */
 final class CustomerItemDisplay {
 
@@ -60,7 +66,12 @@ final class CustomerItemDisplay {
 			return;
 		}
 
-		$label       = _n( 'Serial Number', 'Serial Numbers', count( $serials ), 'serial-number-for-woocommerce' );
+		$product_id = $item->get_product_id();
+		$is_license = $product_id && Licensing::is_pro_active() && LicenseKey::is_enabled_for_product( $product_id );
+
+		$label       = $is_license
+			? _n( 'License Key', 'License Keys', count( $serials ), 'serial-number-for-woocommerce' )
+			: _n( 'Serial Number', 'Serial Numbers', count( $serials ), 'serial-number-for-woocommerce' );
 		$show_expiry = ! $this->in_email;
 
 		$parts = array();
