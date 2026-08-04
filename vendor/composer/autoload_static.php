@@ -57,6 +57,7 @@ class ComposerStaticInit71078b64631c62ac7ba6e3702d200d7c
         'SerialNumberForWooCommerce\\Pro\\LicenseKey\\LicenseKey' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/LicenseKey.php',
         'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Renewal' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/Renewal.php',
         'SerialNumberForWooCommerce\\Pro\\LicenseKey\\RestApi' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/RestApi.php',
+        'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Webhooks' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/Webhooks.php',
         'SerialNumberForWooCommerce\\Pro\\StockSync\\StockSync' => __DIR__ . '/../..' . '/includes/Pro/StockSync/StockSync.php',
         'SerialNumberForWooCommerce\\Pro\\Warranty\\ActivationTrigger' => __DIR__ . '/../..' . '/includes/Pro/Warranty/ActivationTrigger.php',
         'SerialNumberForWooCommerce\\Pro\\Warranty\\Emails\\AbstractWarrantyEmail' => __DIR__ . '/../..' . '/includes/Pro/Warranty/Emails/AbstractWarrantyEmail.php',
