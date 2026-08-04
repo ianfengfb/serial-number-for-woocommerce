@@ -363,6 +363,27 @@ final class Repository {
 	}
 
 	/**
+	 * Extends a license's validity — Activated (flipping it back from
+	 * Expired if that's what it was) with a new expires_at, leaving
+	 * activated_at untouched since a renewal isn't a fresh activation, just
+	 * a continuation of the one that already happened.
+	 */
+	public static function renew( int $id, string $expires_at ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			self::table_name(),
+			array(
+				'status'     => Status::ACTIVATED,
+				'expires_at' => $expires_at,
+			),
+			array( 'id' => $id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
 	 * Marks a serial number Expired. Leaves activated_at/expires_at alone —
 	 * this only flips the terminal status, backing the warranty-expiry cron.
 	 */

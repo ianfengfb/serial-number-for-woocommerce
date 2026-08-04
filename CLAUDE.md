@@ -126,6 +126,10 @@ includes/
                                      key; also backs the API key's admin-post "Regenerate" link
     LicenseKey/AdminActivation.php  Pro: "Activate" button on the admin order edit screen — an override
                                      available regardless of the product's own activation trigger
+    LicenseKey/Renewal.php          Pro: lets a customer pay to extend an existing (non-lifetime) license
+                                     key's expires_at, reusing the same serial rather than issuing a new one
+    LicenseKey/CustomerRenewal.php  Pro: renders the "Renew" link Renewal's flow starts from, on the
+                                     customer's My Account order view
     LicenseKey/Emails/
       AbstractLicenseEmail.php     Pro: shared WC_Email plumbing for the two per-serial license emails —
                                      intentionally a separate copy of Warranty's AbstractWarrantyEmail
@@ -204,7 +208,11 @@ assets/pro/js/admin-license-activation.js Pro: AJAX handler for the admin order 
   `_snw_license_instructions` are independent siblings of `_snw_license_enabled`
   rather than nested under a second checkbox, since they're always relevant
   once licensing is on (no further opt-in beneath them the way warranty's
-  extension has).
+  extension has). `_snw_license_renewal_price` is the same shape again —
+  charged when a customer renews an existing key (see Renewal below);
+  blank means "the product's current regular price", stored as `''` rather
+  than a computed number so it keeps tracking the product's price if that
+  changes later instead of freezing it at whatever it was when last saved.
   The meta-key constants live on the Free `ProductTab` class (not the Pro
   classes that act on them) precisely so Free code can render their teaser
   markup and gate their persistence without referencing Pro.
@@ -212,6 +220,10 @@ assets/pro/js/admin-license-activation.js Pro: AJAX handler for the admin order 
   `_snw_serial_ids` order-item meta (`Assigner::ITEM_META_KEY`) holds an array
   of `snw_serial_numbers.id` values. It is what makes assignment idempotent, so
   read it via `Assigner::serial_ids()` before assigning anything new.
+  `_snw_renewal_serial_id` (`Assigner::RENEWAL_ITEM_META_KEY`) is a sibling
+  order-item meta key, set by Pro's Renewal on a license-renewal line item;
+  `assign_for_order()` skips any item carrying it, since a renewal reuses
+  its referenced serial rather than wanting a freshly-assigned one.
 - `Repository::import_for_product()` is the single place that turns a block of
   pasted text into rows tied to a product — one per non-empty line, status
   `Status::configured_default()`, duplicates (existing or repeated in the same
@@ -634,6 +646,71 @@ Warranty's:
   A separate `WC_Email` registration from `LicenseActivatedEmail` so the
   admin notice is independently toggleable from the customer-facing one,
   even though both listen to the same action.
+
+### License renewal (Pro)
+
+Lets a customer pay to extend an existing (Activated or Expired,
+non-lifetime — `Renewal::is_renewable()`) license key without a fresh
+serial being issued: `expires_at` on the *same* row is pushed out, exactly
+like Warranty Extension's checkbox is a purchase decision about an
+existing line item rather than a separate product. Renewal differs from
+Extension in one structural way, though: Extension is chosen at the
+moment of an original purchase (a checkbox next to the product it's
+extending), while renewal applies to a specific *already-issued* key
+bought in the past — there's no product page in that flow to put a
+checkbox on. So the customer's entry point is `CustomerRenewal`'s "Renew"
+link on the My Account order view (next to the key, same `is_wc_endpoint_url(
+'view-order' )` scoping as `CustomerActivation`), pointing at
+`wc_get_checkout_url()` with the serial's ID as a `snw_renew_serial` query
+var — deliberately not WooCommerce's generic `?add-to-cart=` URL
+convention, so `Renewal::maybe_start_renewal()` (hooked on
+`template_redirect`) can fully control validation and redirect straight
+to checkout rather than relying on that convention's default "added to
+cart" behaviour. It re-checks the same things `Pro\LicenseKey\Ajax` does
+for manual activation — the current user owns the serial's order
+(`current_user_can( 'view_order', ... )`) and the serial is actually
+`is_renewable()` — before adding the product to the cart with
+`Renewal::CART_ITEM_KEY => $serial_id` as cart item data (WooCommerce's
+own cart-key hashing keeps this distinct from an ordinary purchase of the
+same product, same trick Extension relies on), guarding against a repeat
+click bumping quantity to 2 by checking the cart for that serial ID first.
+
+`Renewal::renewal_price_for_product()` reads the product's
+`LICENSE_RENEWAL_PRICE_META_KEY`, falling back to the product's own
+regular price when it's blank. `adjust_price()` (on
+`woocommerce_before_calculate_totals`) sets the cart item's price outright
+to that value on every firing, the same "always compute from a fresh
+lookup, never add onto the current possibly-already-adjusted price" shape
+as `Extension::adjust_price()` — that one already shipped with, and later
+fixed, the double-counting bug this shape avoids from the start.
+`display_cart_item_data()` shows "License renewal: {key}" in the cart/
+checkout line, and `save_order_item_meta()` snapshots the serial ID onto
+the order item as `Assigner::RENEWAL_ITEM_META_KEY` at checkout.
+
+`Renewal::on_order()` (bound to the same checkout-processed hooks as
+`Assigner` and `Pro\LicenseKey\ActivationTrigger`) walks a placed order's
+items and calls `renew_serial()` for any item carrying that meta —
+immediately, with no per-product trigger choice the way initial
+activation has, since renewal is a one-off action the customer just paid
+for. `renew_serial()` re-validates `is_renewable()` itself rather than
+trusting the cart-time check (the serial's eligibility could have changed
+while it sat in the cart), then extends `expires_at` from whichever is
+later, the serial's current expiry or now — so renewing before expiry
+stacks the new term on top of what's left instead of wasting it, while
+the common case (renewing after expiry) just starts the new term from
+today. `Repository::renew()` is the primitive this calls: Activated (in
+case it had flipped to Expired) with the new `expires_at`, leaving
+`activated_at` untouched since renewing isn't a fresh activation. Fires
+`snw_license_renewed` (serial ID, new `expires_at`) for the `license.renewed`
+webhook topic to listen on (see below) — no new email for this yet; the
+existing Activated/Expired emails don't cover "renewed" and a dedicated
+one hasn't been asked for.
+
+One known scope limit: a renewal purchase is always exactly one term at a
+time, regardless of quantity — `on_order()` doesn't multiply the
+extension by how many were bought, since a repeat "Renew" click is
+already guarded against reaching more than 1 in the cart in the first
+place.
 
 ## CSV export (Pro)
 
