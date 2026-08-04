@@ -139,6 +139,7 @@ includes/
       LicenseActivatedEmail.php    Pro: customer email sent on the snw_license_activated action
       LicenseExpiredEmail.php      Pro: customer email sent on the generic snw_serial_expired action
                                      (filtered by is_relevant() to only license-enabled products)
+      LicenseRenewedEmail.php      Pro: customer email sent on the snw_license_renewed action
       LicenseDeliveryEmail.php     Pro: order-level customer email (not per-serial) sent on
                                      snw_license_delivered — the key(s) plus each product's own
                                      License instructions, delivered regardless of activation trigger
@@ -613,7 +614,7 @@ the usual emails fire the same as any other activation path.
 
 ### License emails (Pro)
 
-Four emails, all registered through `woocommerce_email_classes` like
+Five emails, all registered through `woocommerce_email_classes` like
 Warranty's:
 
 - **`LicenseDeliveryEmail`** (`snw_license_delivered`) — the one exception
@@ -636,13 +637,19 @@ Warranty's:
   since they were hand-rolled `<input>`/`<select>` markup, and silently
   never saved until that was fixed).
 - **`LicenseActivatedEmail`** (`snw_license_activated`) / **`LicenseExpiredEmail`**
-  (generic `snw_serial_expired`, filtered by `is_relevant()`) — per-serial,
+  (generic `snw_serial_expired`, filtered by `is_relevant()`) /
+  **`LicenseRenewedEmail`** (`snw_license_renewed`) — per-serial,
   mirroring `WarrantyActivatedEmail`/`WarrantyExpiredEmail` exactly in shape
   via their own `AbstractLicenseEmail`. Deliberately *not* sharing
   Warranty's `AbstractWarrantyEmail`: the two are expected to diverge as
   License grows its own activation paths (manual, external/webhook) that
   Warranty will never need, so coupling the namespaces together now would
-  just make that divergence harder later.
+  just make that divergence harder later. `LicenseRenewedEmail` binds
+  `trigger()` with only 1 accepted arg even though `snw_license_renewed`
+  fires with 2 (serial ID, new `expires_at`) — `AbstractLicenseEmail::trigger()`
+  only ever takes a serial ID and re-resolves the row fresh from the
+  database, so the action's second argument is redundant for this listener
+  and simply never reaches it.
 - **`LicenseActivatedAdminEmail`** (also `snw_license_activated`,
   `customer_email = false`) — the "notify the seller" half of activation,
   useful once activation can happen outside a normal checkout (a manual or
@@ -705,10 +712,9 @@ the common case (renewing after expiry) just starts the new term from
 today. `Repository::renew()` is the primitive this calls: Activated (in
 case it had flipped to Expired) with the new `expires_at`, leaving
 `activated_at` untouched since renewing isn't a fresh activation. Fires
-`snw_license_renewed` (serial ID, new `expires_at`) for the `license.renewed`
-webhook topic to listen on (see below) — no new email for this yet; the
-existing Activated/Expired emails don't cover "renewed" and a dedicated
-one hasn't been asked for.
+`snw_license_renewed` (serial ID, new `expires_at`) for both the
+`license.renewed` webhook topic (see below) and `LicenseRenewedEmail`
+(see License emails) to listen on.
 
 One known scope limit: a renewal purchase is always exactly one term at a
 time, regardless of quantity — `on_order()` doesn't multiply the
