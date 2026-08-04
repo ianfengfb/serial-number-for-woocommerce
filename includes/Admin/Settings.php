@@ -225,9 +225,50 @@ final class Settings extends \WC_Settings_Page {
 				'id'    => 'snw_license_settings',
 			),
 			array(
+				'title'             => __( 'API key', 'serial-number-for-woocommerce' ),
+				'desc'              => $this->license_api_key_description( $is_pro ),
+				'id'                => 'snw_license_api_key',
+				'type'              => 'text',
+				'default'           => $is_pro ? \SerialNumberForWooCommerce\Pro\LicenseKey\LicenseKey::get_or_create_api_key() : '',
+				'custom_attributes' => array_merge(
+					array(
+						'readonly' => 'readonly',
+						'onclick'  => 'this.select();',
+						'size'     => 44,
+					),
+					$is_pro ? array() : array( 'disabled' => 'disabled' )
+				),
+			),
+			array(
 				'type' => 'sectionend',
 				'id'   => 'snw_license_settings',
 			),
 		);
+	}
+
+	/**
+	 * Explains the API key field and, when licensed, appends a "Regenerate"
+	 * link straight to RestApi's admin-post handler — a plain link rather
+	 * than AJAX, matching Export CSV's own admin-post-as-a-link pattern.
+	 * Unlicensed, the field itself is disabled/empty (see the field array
+	 * above), so there's nothing to regenerate and no link is shown.
+	 */
+	private function license_api_key_description( bool $is_pro ): string {
+		$desc = sprintf(
+			/* translators: 1: header name, 2: REST API endpoint */
+			__( 'Sent as the %1$s header when your own external system calls %2$s to activate a license key for a product set to "Externally, by your own system (API)".', 'serial-number-for-woocommerce' ),
+			'<code>X-SNW-Api-Key</code>',
+			'<code>POST ' . esc_html( rest_url( 'snw/v1/license/activate' ) ) . '</code>'
+		);
+
+		if ( ! $is_pro ) {
+			return $desc;
+		}
+
+		$regenerate_url = wp_nonce_url( admin_url( 'admin-post.php?action=snw_regenerate_license_api_key' ), 'snw_regenerate_license_api_key' );
+
+		return $desc . ' <a href="' . esc_url( $regenerate_url ) . '" onclick="return confirm(\'' .
+			esc_js( __( 'Regenerate the API key? Anything still using the old one will stop working immediately.', 'serial-number-for-woocommerce' ) ) .
+			'\');">' . esc_html__( 'Regenerate', 'serial-number-for-woocommerce' ) . '</a>';
 	}
 }
