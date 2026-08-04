@@ -28,6 +28,7 @@ final class Plugin {
 		new Orders\ItemDisplay();
 		new Orders\CustomerItemDisplay();
 		new Orders\Ajax();
+		new Orders\PrintSlip();
 
 		if ( Licensing::is_pro_active() ) {
 			new Pro\CustomRules\Ajax();
@@ -43,6 +44,7 @@ final class Plugin {
 			new Pro\LicenseKey\Renewal();
 			new Pro\LicenseKey\CustomerRenewal();
 			new Pro\LicenseKey\Webhooks();
+			new Pro\PrintSlip\Printer();
 
 			add_filter(
 				'woocommerce_email_classes',

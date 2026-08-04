@@ -98,6 +98,9 @@ includes/
     Ajax.php                        wp_ajax_snw_add_order_item_serial backing the admin control; enqueues
                                      assets/js/order-item-serials.js only on the order edit screen (HPOS-
                                      or CPT-storage-aware via wc_get_page_screen_id())
+    PrintSlip.php                   Free tier: renders the "Print Slip" link (or its unlicensed teaser) on
+                                     the order edit screen's Order actions box — the feature itself is Pro
+                                     (see Pro/PrintSlip/Printer.php); only the teaser lives here
   Pro/
     StockSync/StockSync.php         Pro: mirrors a product's Available pool count onto WC stock
     CustomRules/CustomRules.php     Pro: a product's own auto-generation rule, overriding the global one
@@ -151,9 +154,13 @@ includes/
                                      License instructions, delivered regardless of activation trigger
       LicenseActivatedAdminEmail.php Pro: admin notice sent on the same snw_license_activated action,
                                      independently toggleable from the customer-facing one
+    PrintSlip/Printer.php           Pro: admin_post_snw_print_slip handler — streams a standalone,
+                                     themeable HTML slip for one order's serial numbers/license keys
 templates/emails/                   Warranty and License notification email templates (HTML +
                                      templates/emails/plain/),
                                      theme-overridable the same way WooCommerce's own email templates are
+templates/print/order-slip.php      Pro: the Print Slip template — the first non-email themeable template,
+                                     same wc_get_template_html() override mechanism as templates/emails/
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
 assets/js/support.js                 Enqueued only on the Support page; AJAX-submits the contact form,
@@ -779,6 +786,71 @@ resource it has no built-in knowledge of:
   (`LicenseKey::collect_for_order()`, the same helper the delivery email's
   template uses), everything else gets a serial-shaped one (key, product,
   order ID, `activated_at`/`expires_at`).
+
+## Print Slip (Pro)
+
+Lets a seller print a standalone, printable HTML slip for one order's
+serial numbers/license keys straight from the admin order edit screen —
+either as a plain convenience record, or as the alternative to showing
+serials to the customer online at all (see the "Customer visibility"
+settings above; the "Print Slip (Pro)" settings section explicitly points
+at this). Deliberately Pro-only as a whole feature (not just its
+warranty/license content) — a different scope call than `ItemDisplay`'s
+own free SN display.
+
+`Orders\PrintSlip` (Free) renders the "Print Slip" link — or its
+unlicensed teaser — on `woocommerce_order_actions_end` (inside the order
+edit screen's Order actions box, the one with the status dropdown and
+*Update* button). Even though the feature is entirely Pro, the link/teaser
+itself has to live in Free code, per the usual rule: a Pro class can't
+render its own teaser since it doesn't exist in the free zip.
+Unlicensed, it renders as a plain, non-clickable `<span>` with a PRO
+badge — not a disabled `<a>` — same reasoning as Export CSV: there's no
+HTML page on the other end of `admin_post_snw_print_slip` to redirect to
+when it isn't hooked, so a dead link would be worse than a disabled
+control. `PrintSlip::is_available_for_order()` (checking each item's
+`Assigner::serial_rows()`) suppresses the link/teaser entirely on an
+order with nothing to print — this check is Free-safe since `Assigner` is
+Free.
+
+`Pro\PrintSlip\Printer` is the actual `admin_post_snw_print_slip` handler,
+mirroring `Pro\Export\Exporter`'s streaming shape exactly (per-order
+nonce, `manage_woocommerce` capability check, `wc_get_order()` lookup,
+resolve the full HTML string first, *then* clear output buffers/send
+headers/echo/`exit`) — except it streams a rendered HTML template instead
+of a CSV file. Since this class only ever exists when licensed, its
+per-item warranty/license lookups (`LicenseKey`/`Warranty`
+`is_enabled_for_product()`/`duration_for_product()`/`instructions_for_product()`)
+don't re-check `Licensing::is_pro_active()` themselves — same reasoning
+`Pro\BulkGenerate\Controller` uses for calling `StockSync::sync()`
+unguarded.
+
+`templates/print/order-slip.php` is the first non-email themeable
+template in the plugin, using the identical `wc_get_template_html( $name,
+$args, '', $default_path )` override mechanism as the WC_Email templates
+— a seller overrides it at `yourtheme/woocommerce/print/order-slip.php`,
+mirroring `templates/emails/*.php` -> `yourtheme/woocommerce/emails/*.php`
+one category level up. It's a full standalone HTML document (not fed
+through `woocommerce_email_header`/`footer`, since those are
+email-specific), with its own inlined print stylesheet and a `Print`
+button (`window.print()`) hidden via `@media print` when actually
+printing. No plain-text counterpart, unlike the email templates — this is
+a browser-rendered, user-printed page, not an email.
+
+The slip's "seller message" is a global default (`snw_print_slip_message`
+option, set on the Print Slip (Pro) settings section) shown pre-filled in
+an **editable** textarea on the print page itself, so the seller can
+tweak it per order before printing — nothing is saved back to the order,
+it's print-time only. The template mirrors the textarea's live value into
+a print-only `<div>` via a small inline script (`input` event listener),
+since a `<textarea>`'s own border/scrollbar doesn't print cleanly across
+browsers — only the mirrored div is visible in `@media print`, the
+textarea itself is hidden then.
+
+Deliberately no shipping address on the slip: it's a digital record, not
+a packing-slip insert, since serial/license products are typically
+virtual — a seller who genuinely needs a physical packing-slip workflow
+isn't the primary case this was built for.
 
 ## CSV export (Pro)
 
