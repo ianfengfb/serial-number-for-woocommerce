@@ -13,6 +13,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class LicenseKey {
 
+	/** Store-wide shared secret for the external activation REST API (see RestApi). */
+	const API_KEY_OPTION = 'snw_license_api_key';
+
 	public static function is_enabled_for_product( int $product_id ): bool {
 		return Licensing::is_pro_active()
 			&& 'yes' === get_post_meta( $product_id, ProductTab::META_KEY, true )
@@ -39,12 +42,12 @@ final class LicenseKey {
 	}
 
 	/**
-	 * @return string 'immediate', 'on_completed', or 'manual'.
+	 * @return string 'immediate', 'on_completed', 'manual', or 'api'.
 	 */
 	public static function activation_trigger_for_product( int $product_id ): string {
 		$trigger = get_post_meta( $product_id, ProductTab::LICENSE_ACTIVATION_TRIGGER_META_KEY, true );
 
-		return in_array( $trigger, array( 'immediate', 'on_completed', 'manual' ), true ) ? $trigger : 'immediate';
+		return in_array( $trigger, array( 'immediate', 'on_completed', 'manual', 'api' ), true ) ? $trigger : 'immediate';
 	}
 
 	/**
@@ -97,5 +100,26 @@ final class LicenseKey {
 		do_action( 'snw_license_activated', $serial_id );
 
 		return true;
+	}
+
+	/**
+	 * The API key RestApi requires on its external-activation endpoint,
+	 * generating and persisting one on first use so a stable value always
+	 * exists — the Settings page and the REST permission check both call
+	 * this rather than reading the option directly, so neither ever sees
+	 * an empty/missing key.
+	 */
+	public static function get_or_create_api_key(): string {
+		$key = get_option( self::API_KEY_OPTION );
+
+		return $key ? $key : self::regenerate_api_key();
+	}
+
+	public static function regenerate_api_key(): string {
+		$key = wp_generate_password( 40, false );
+
+		update_option( self::API_KEY_OPTION, $key, false );
+
+		return $key;
 	}
 }
