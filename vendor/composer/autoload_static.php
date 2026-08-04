@@ -45,6 +45,8 @@ class ComposerStaticInit71078b64631c62ac7ba6e3702d200d7c
         'SerialNumberForWooCommerce\\Pro\\Import\\Controller' => __DIR__ . '/../..' . '/includes/Pro/Import/Controller.php',
         'SerialNumberForWooCommerce\\Pro\\Import\\RowParser' => __DIR__ . '/../..' . '/includes/Pro/Import/RowParser.php',
         'SerialNumberForWooCommerce\\Pro\\LicenseKey\\ActivationTrigger' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/ActivationTrigger.php',
+        'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Ajax' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/Ajax.php',
+        'SerialNumberForWooCommerce\\Pro\\LicenseKey\\CustomerActivation' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/CustomerActivation.php',
         'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\AbstractLicenseEmail' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/Emails/AbstractLicenseEmail.php',
         'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\LicenseActivatedAdminEmail' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/Emails/LicenseActivatedAdminEmail.php',
         'SerialNumberForWooCommerce\\Pro\\LicenseKey\\Emails\\LicenseActivatedEmail' => __DIR__ . '/../..' . '/includes/Pro/LicenseKey/Emails/LicenseActivatedEmail.php',

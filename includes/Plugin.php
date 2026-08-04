@@ -35,6 +35,8 @@ final class Plugin {
 			new Pro\Warranty\ExpiryChecker();
 			new Pro\Warranty\Extension();
 			new Pro\LicenseKey\ActivationTrigger();
+			new Pro\LicenseKey\CustomerActivation();
+			new Pro\LicenseKey\Ajax();
 
 			add_filter(
 				'woocommerce_email_classes',
