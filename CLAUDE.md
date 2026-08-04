@@ -115,8 +115,22 @@ includes/
                                      per-product activation trigger) + activate_serial()
     LicenseKey/ActivationTrigger.php Pro: activates a product's license serials per its own activation
                                      trigger (immediate, or on order Completed) — a per-product choice,
-                                     unlike Warranty's store-wide setting
-templates/emails/                   Warranty notification email templates (HTML + templates/emails/plain/),
+                                     unlike Warranty's store-wide setting; also fires the order-level
+                                     license delivery notification regardless of each item's own trigger
+    LicenseKey/Emails/
+      AbstractLicenseEmail.php     Pro: shared WC_Email plumbing for the two per-serial license emails —
+                                     intentionally a separate copy of Warranty's AbstractWarrantyEmail
+                                     rather than a shared base, so the two features can diverge freely
+      LicenseActivatedEmail.php    Pro: customer email sent on the snw_license_activated action
+      LicenseExpiredEmail.php      Pro: customer email sent on the generic snw_serial_expired action
+                                     (filtered by is_relevant() to only license-enabled products)
+      LicenseDeliveryEmail.php     Pro: order-level customer email (not per-serial) sent on
+                                     snw_license_delivered — the key(s) plus each product's own
+                                     License instructions, delivered regardless of activation trigger
+      LicenseActivatedAdminEmail.php Pro: admin notice sent on the same snw_license_activated action,
+                                     independently toggleable from the customer-facing one
+templates/emails/                   Warranty and License notification email templates (HTML +
+                                     templates/emails/plain/),
                                      theme-overridable the same way WooCommerce's own email templates are
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
@@ -174,10 +188,11 @@ assets/pro/js/bulk-generate.js       Pro: repeatable-row add/remove + select2 in
   Warranty, and License Key below. `_snw_warranty_extension_enabled` and its
   length/period/price siblings follow the exact same shape, one level
   further down (dependent on warranty itself being enabled); License's own
-  `_snw_license_length`/`_snw_license_period`/`_snw_license_activation_trigger`
-  are independent siblings of `_snw_license_enabled` rather than nested
-  under a second checkbox, since they're always relevant once licensing is
-  on (no further opt-in beneath them the way warranty's extension has).
+  `_snw_license_length`/`_snw_license_period`/`_snw_license_activation_trigger`/
+  `_snw_license_instructions` are independent siblings of `_snw_license_enabled`
+  rather than nested under a second checkbox, since they're always relevant
+  once licensing is on (no further opt-in beneath them the way warranty's
+  extension has).
   The meta-key constants live on the Free `ProductTab` class (not the Pro
   classes that act on them) precisely so Free code can render their teaser
   markup and gate their persistence without referencing Pro.
@@ -460,6 +475,44 @@ walks the order's items, skips any whose product isn't
 `LicenseKey::is_enabled_for_product()` or whose own activation-trigger
 setting doesn't match that hook's mode, and activates the rest via
 `LicenseKey::activate_serial()`.
+
+### License emails (Pro)
+
+Four emails, all registered through `woocommerce_email_classes` like
+Warranty's:
+
+- **`LicenseDeliveryEmail`** (`snw_license_delivered`) — the one exception
+  to "per-serial": it's order-level, since one order can contain several
+  licensed products and the customer should get everything in a single
+  email. Fired from `ActivationTrigger`'s own checkout-processed handler
+  (`maybe_notify_delivery()`) the moment the order is placed, regardless of
+  each item's own activation trigger — delivery (handing over the key) and
+  activation (starting the validity countdown) are separate concerns, so a
+  "customer activates manually" or "on Completed" product still delivers
+  its key right away. Its template loops over every license-enabled item
+  (`LicenseDeliveryEmail::collect_licenses()`), pairing each product's keys
+  with that product's own `LicenseKey::instructions_for_product()` — the
+  seller's per-product activation steps/download links/support contact,
+  entered as a plain textarea on the Serial Number tab (`#snw-license-fields`,
+  rendered via `woocommerce_wp_textarea_input()` so it gets a `name`
+  attribute for free — the earlier warranty length/period fields didn't,
+  since they were hand-rolled `<input>`/`<select>` markup, and silently
+  never saved until that was fixed).
+- **`LicenseActivatedEmail`** (`snw_license_activated`) / **`LicenseExpiredEmail`**
+  (generic `snw_serial_expired`, filtered by `is_relevant()`) — per-serial,
+  mirroring `WarrantyActivatedEmail`/`WarrantyExpiredEmail` exactly in shape
+  via their own `AbstractLicenseEmail`. Deliberately *not* sharing
+  Warranty's `AbstractWarrantyEmail`: the two are expected to diverge as
+  License grows its own activation paths (manual, external/webhook) that
+  Warranty will never need, so coupling the namespaces together now would
+  just make that divergence harder later.
+- **`LicenseActivatedAdminEmail`** (also `snw_license_activated`,
+  `customer_email = false`) — the "notify the seller" half of activation,
+  useful once activation can happen outside a normal checkout (a manual or
+  future externally-triggered activation the seller wants visibility into).
+  A separate `WC_Email` registration from `LicenseActivatedEmail` so the
+  admin notice is independently toggleable from the customer-facing one,
+  even though both listen to the same action.
 
 ## CSV export (Pro)
 
