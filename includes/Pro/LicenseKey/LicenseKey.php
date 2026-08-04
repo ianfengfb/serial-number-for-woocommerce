@@ -4,6 +4,7 @@ namespace SerialNumberForWooCommerce\Pro\LicenseKey;
 use SerialNumberForWooCommerce\Admin\Products\ProductTab;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
 use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Orders\Assigner;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -121,5 +122,43 @@ final class LicenseKey {
 		update_option( self::API_KEY_OPTION, $key, false );
 
 		return $key;
+	}
+
+	/**
+	 * Every license-enabled item in an order, paired with its keys and the
+	 * product's own instructions — shared by LicenseDeliveryEmail's template
+	 * and Webhooks' license.delivered payload, so the two can never drift
+	 * apart on what counts as "this order's licenses".
+	 *
+	 * @return array<int, array{product_name: string, instructions: string, keys: string[]}>
+	 */
+	public static function collect_for_order( \WC_Order $order ): array {
+		$licenses = array();
+
+		foreach ( $order->get_items() as $item ) {
+			if ( ! $item instanceof \WC_Order_Item_Product ) {
+				continue;
+			}
+
+			$product_id = $item->get_product_id();
+
+			if ( ! $product_id || ! self::is_enabled_for_product( $product_id ) ) {
+				continue;
+			}
+
+			$keys = Assigner::serial_numbers( $item );
+
+			if ( empty( $keys ) ) {
+				continue;
+			}
+
+			$licenses[] = array(
+				'product_name' => $item->get_name(),
+				'instructions' => self::instructions_for_product( $product_id ),
+				'keys'         => $keys,
+			);
+		}
+
+		return $licenses;
 	}
 }

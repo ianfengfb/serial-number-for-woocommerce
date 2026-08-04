@@ -41,6 +41,7 @@ final class Plugin {
 			new Pro\LicenseKey\AdminActivation();
 			new Pro\LicenseKey\Renewal();
 			new Pro\LicenseKey\CustomerRenewal();
+			new Pro\LicenseKey\Webhooks();
 
 			add_filter(
 				'woocommerce_email_classes',
