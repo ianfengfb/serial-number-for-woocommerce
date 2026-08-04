@@ -29,6 +29,70 @@ final class LicenseActivatedAdminEmail extends \WC_Email {
 		parent::__construct();
 	}
 
+	/**
+	 * WC_Email's own base init_form_fields() doesn't include a "Recipient(s)"
+	 * field — every admin-facing email in WooCommerce core (e.g. New Order)
+	 * defines its own, and this is the same pattern: without it, the
+	 * settings screen has nothing to override recipient with, so it's stuck
+	 * on the admin_email fallback baked into WC_Email's constructor.
+	 */
+	public function init_form_fields(): void {
+		$this->form_fields = array(
+			'enabled'            => array(
+				'title'   => __( 'Enable/Disable', 'serial-number-for-woocommerce' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Enable this email notification', 'serial-number-for-woocommerce' ),
+				'default' => 'yes',
+			),
+			'recipient'          => array(
+				'title'       => __( 'Recipient(s)', 'serial-number-for-woocommerce' ),
+				'type'        => 'text',
+				'desc_tip'    => true,
+				'description' => sprintf(
+					/* translators: %s: the site's admin email address */
+					__( 'Enter recipients (comma separated) for this email. Defaults to %s.', 'serial-number-for-woocommerce' ),
+					'<code>' . esc_attr( get_option( 'admin_email' ) ) . '</code>'
+				),
+				'placeholder' => '',
+				'default'     => '',
+			),
+			'subject'            => array(
+				'title'       => __( 'Subject', 'serial-number-for-woocommerce' ),
+				'type'        => 'text',
+				'desc_tip'    => true,
+				'description' => __( 'Available placeholder: <code>{serial_number}</code>', 'serial-number-for-woocommerce' ),
+				'placeholder' => $this->get_default_subject(),
+				'default'     => '',
+			),
+			'heading'            => array(
+				'title'       => __( 'Email heading', 'serial-number-for-woocommerce' ),
+				'type'        => 'text',
+				'desc_tip'    => true,
+				'description' => __( 'Available placeholder: <code>{serial_number}</code>', 'serial-number-for-woocommerce' ),
+				'placeholder' => $this->get_default_heading(),
+				'default'     => '',
+			),
+			'additional_content' => array(
+				'title'       => __( 'Additional content', 'serial-number-for-woocommerce' ),
+				'description' => __( 'Text to appear below the main email content.', 'serial-number-for-woocommerce' ),
+				'css'         => 'width:400px; height: 75px;',
+				'placeholder' => __( 'N/A', 'serial-number-for-woocommerce' ),
+				'type'        => 'textarea',
+				'default'     => $this->get_default_additional_content(),
+				'desc_tip'    => true,
+			),
+			'email_type'         => array(
+				'title'       => __( 'Email type', 'serial-number-for-woocommerce' ),
+				'type'        => 'select',
+				'description' => __( 'Choose which format of email to send.', 'serial-number-for-woocommerce' ),
+				'default'     => 'html',
+				'class'       => 'email_type wc-enhanced-select',
+				'options'     => $this->get_email_type_options(),
+				'desc_tip'    => true,
+			),
+		);
+	}
+
 	public function get_default_subject(): string {
 		return __( 'A license was activated: {serial_number}', 'serial-number-for-woocommerce' );
 	}
