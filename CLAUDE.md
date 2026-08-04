@@ -261,6 +261,39 @@ assets/pro/js/admin-license-activation.js Pro: AJAX handler for the admin order 
   `ProductTab::save()` for whatever's still in the field — safe to double up
   on the same input since duplicates are always skipped.
 
+## Product type restrictions
+
+The Serial Number tab is hidden on **Grouped** and **External/Affiliate**
+products, via `add_tab()`'s `class => array( 'show_if_simple',
+'show_if_variable' )` — WooCommerce's own client-side tab-visibility
+convention (its `meta-boxes-product.js`, already loaded on every product
+edit screen, toggles any element carrying `show_if_X`/`hide_if_X` classes
+based on the "Product data" type `<select>`). Neither type can ever
+generate an order line item on this site — Grouped has no price/cart
+button of its own (only its child Simple products get ordered
+individually); External/Affiliate redirects offsite to buy — so "Enable
+serial numbers" on either would be dead UI that could never do anything.
+`ProductTab::save()` backs this server-side too (`$is_grouped_or_external`),
+since a CSS-hidden checkbox that was checked *before* a merchant switches
+the product type mid-edit still submits its old value — `display:none`
+doesn't stop form submission the way `disabled` does, so hiding alone
+isn't a real guarantee.
+
+**Variable products** are supported for the core feature (serial
+assignment) but not for stock automation. Every order-item lookup in the
+codebase (`Assigner`'s `$item->get_product_id()` call sites) resolves to
+the *parent* product's ID for a variation line item — deliberate and
+consistent everywhere (`StockSync::sync()` is never called with anything
+but a parent ID; the `snw_serial_numbers` table has no `variation_id`
+column at all), meaning **all of a variable product's variations share
+one pool tied to the parent**, same as `Assigner::is_enabled_for_product()`
+already documents. A seller who needs physically distinct serial ranges
+per variation isn't served by this — a known scope limit, not a bug.
+"Manage product stock with Serial Number" is excluded for Variable
+products specifically (see Stock sync below) since it targets a Simple
+product's own stock field, which doesn't exist in the same place for a
+Variable product.
+
 ## Stock sync (Pro)
 
 `Pro\StockSync\StockSync::sync( $product_id )` recomputes and writes a
@@ -284,6 +317,17 @@ it. `ProductTab`'s inline script reflects that in the UI: while both
 checkboxes are on (and licensed), WooCommerce's native stock quantity field
 (`#_stock`, on the Inventory tab) is disabled with a short note explaining
 why, toggled live as either checkbox changes.
+
+`#_stock` is the field ID WooCommerce renders on a *Simple* product's own
+Inventory tab specifically — a Variable product manages stock
+per-variation inside the Variations tab's repeater instead, so this
+checkbox can't target the right field(s) there. `ProductTab::render_panel()`
+hides it for Variable products via `wrapper_class => 'hide_if_variable'`
+(WooCommerce's own tab/field show-if convention — see "Product type
+restrictions" above), and `save()` never persists it as `yes` for a
+Variable product regardless of what was posted, since CSS-hiding a
+checkbox doesn't stop a value the field held *before* the product's type
+was switched from still submitting.
 
 `sync()` returns the new count (or `null` if it no-opped) rather than
 `void`, specifically so the two AJAX handlers that trigger it from the
