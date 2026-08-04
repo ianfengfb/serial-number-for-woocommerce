@@ -694,7 +694,12 @@ Warranty's:
   each item's own activation trigger — delivery (handing over the key) and
   activation (starting the validity countdown) are separate concerns, so a
   "customer activates manually" or "on Completed" product still delivers
-  its key right away. Its template loops over every license-enabled item
+  its key right away. Guarded by the `_snw_license_delivery_notified`
+  order meta (set right before firing, same "persist state, then fire"
+  order as `activate_serial()`'s own idempotency guard), so the
+  order-placed hooks firing more than once for the same order — a retried
+  webhook, a re-processing third-party integration — can never send a
+  second delivery email re-exposing the key. Its template loops over every license-enabled item
   (`LicenseKey::collect_for_order()` — shared with Webhooks' own
   `license.delivered` payload, below, so the two can't drift apart on what
   counts as "this order's licenses"), pairing each product's keys with
