@@ -36,8 +36,30 @@ if ( ! file_exists( SNW_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 
 require_once SNW_PLUGIN_DIR . 'vendor/autoload.php';
 
-register_activation_hook( SNW_PLUGIN_FILE, array( '\SerialNumberForWooCommerce\Install', 'activate' ) );
+register_activation_hook( SNW_PLUGIN_FILE, 'snw_activate_plugin' );
 register_deactivation_hook( SNW_PLUGIN_FILE, array( '\SerialNumberForWooCommerce\Install', 'deactivate' ) );
+
+/**
+ * Refuses activation outright when WooCommerce isn't active, so the
+ * plugin's own database table is never created for a site that can't use
+ * it. Checked here rather than relying on the plugins_loaded gate below:
+ * register_activation_hook's callback runs immediately as part of the
+ * "activate this plugin" request, before this same request's own
+ * plugins_loaded has a chance to run for a plugin that wasn't already
+ * active — so by the time the later gate would fire, Install::activate()
+ * would already have run.
+ */
+function snw_activate_plugin() {
+	if ( ! class_exists( 'WooCommerce' ) ) {
+		wp_die(
+			esc_html__( 'Serial Number for WooCommerce requires WooCommerce to be installed and active. Please install/activate WooCommerce, then activate this plugin again.', 'serial-number-for-woocommerce' ),
+			esc_html__( 'Plugin Activation Error', 'serial-number-for-woocommerce' ),
+			array( 'back_link' => true )
+		);
+	}
+
+	\SerialNumberForWooCommerce\Install::activate();
+}
 
 // Declare compatibility with WooCommerce High-Performance Order Storage.
 add_action(
@@ -49,18 +71,46 @@ add_action(
 	}
 );
 
+/**
+ * Covers the case snw_activate_plugin() above doesn't: WooCommerce being
+ * deactivated LATER, while this plugin is already active. Rather than
+ * staying active in a permanently non-functional state (the previous
+ * behavior — an admin_notices callback that just nagged forever),
+ * self-deactivates and queues a one-time notice via a transient, since by
+ * the time admin_init runs it's too late in the request to reliably still
+ * register a same-pageload admin_notices callback after deactivating.
+ */
+add_action(
+	'admin_init',
+	function () {
+		if ( class_exists( 'WooCommerce' ) || ! is_plugin_active( SNW_PLUGIN_BASENAME ) ) {
+			return;
+		}
+
+		deactivate_plugins( SNW_PLUGIN_BASENAME );
+		set_transient( 'snw_missing_woocommerce_notice', true, MINUTE_IN_SECONDS );
+	}
+);
+
+add_action(
+	'admin_notices',
+	function () {
+		if ( ! get_transient( 'snw_missing_woocommerce_notice' ) ) {
+			return;
+		}
+
+		delete_transient( 'snw_missing_woocommerce_notice' );
+
+		echo '<div class="notice notice-error"><p>' .
+			esc_html__( 'Serial Number for WooCommerce requires WooCommerce to be installed and active, and has been deactivated.', 'serial-number-for-woocommerce' ) .
+			'</p></div>';
+	}
+);
+
 add_action(
 	'plugins_loaded',
 	function () {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			add_action(
-				'admin_notices',
-				function () {
-					echo '<div class="notice notice-error"><p>' .
-						esc_html__( 'Serial Number for WooCommerce requires WooCommerce to be installed and active.', 'serial-number-for-woocommerce' ) .
-						'</p></div>';
-				}
-			);
 			return;
 		}
 
