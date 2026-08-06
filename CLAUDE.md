@@ -69,8 +69,8 @@ includes/
                                      upgrades DB tables via dbDelta. Also register_deactivation_hook target:
                                      clears Warranty's cron events
   Admin/Menu.php                    Free tier: WooCommerce > Serial Numbers admin page (list/add/edit/delete/
-                                     bulk-generate/import/support routing; list view has a by-product / no-product
-                                     filter)
+                                     bulk-generate/import/support routing; list view has a by-product /
+                                     no-product filter and a by-status filter)
   Admin/Settings.php                Free tier: WooCommerce > Settings > Serial Numbers tab (default status, auto-gen
                                      rules, customer-visibility toggles for emails/account order view, Warranty
                                      (Pro) activation-trigger settings, Support section)
@@ -926,10 +926,27 @@ isn't the primary case this was built for.
 file-download response, not a normal admin page, so it can't go through the
 usual `?page=serial-number-for-woocommerce&action=` routing in `Admin\Menu`.
 The "Export CSV" button links straight to `admin-post.php` with the list's
-*current* search term and product filter carried over as query args, so the
-export always matches what's on screen. `Repository::search_all()` shares
-its WHERE-building (`build_where()`) with the paginated `search()` used by
-the list table, so the two filtering behaviors can't drift apart.
+*current* search term, product filter, and status filter carried over as
+query args, so the export always matches what's on screen.
+`Repository::search_all()` shares its WHERE-building (`build_where()`) with
+the paginated `search()` used by the list table, so the two filtering
+behaviors can't drift apart.
+
+The list table's own status filter (`Admin\Menu::render_list()`, a
+`<select>` built from `Status::all()` next to the product filter,
+auto-submitting the shared `<form>` on change) filters to that exact
+status via `build_where()`'s `status` key — validated against
+`Status::exists()` both there and before it's carried into the export
+query args, so an invalid/tampered value is silently ignored rather than
+matching nothing. The list table also supports sorting by Expires On
+(`ListTable::get_sortable_columns()` — WordPress's own sortable-column-
+header convention); `Repository::build_orderby()` whitelists the
+`orderby`/`order` query args against that one column (falling back to the
+default `id DESC` for anything else) so they can never reach raw SQL,
+with `id DESC` always the tie-breaker so rows sharing the same — or a
+NULL — `expires_at` still sort in a stable order. This orderby/order
+support is only wired into `search()`, not `search_all()`: CSV export has
+no on-screen row order to match, so it keeps its own fixed `id DESC`.
 
 Export columns are `serial_number, status, product_id, product_sku,
 product_name, order_id, created_at, expires_at` — raw values (status key,
@@ -1150,11 +1167,10 @@ touches the item-meta array.
 **`Status::REVOKED`** is a new, dedicated status (not a reuse of
 `Unavailable`) specifically so a seller can tell "revoked by a refund"
 apart from "I manually parked this" in the list/export — it required no
-changes anywhere except `Status.php` itself: the list table has no status
-filter (only `Status::label()` for display), and the Add/Edit form's
-status `<select>`, the CSV import validator (`RowParser::resolve_status()`),
-and the Settings default-status dropdown all already build their options
-from `Status::all()` directly.
+changes anywhere except `Status.php` itself: the Add/Edit form's status
+`<select>`, the list table's own status filter (below), the CSV import
+validator (`RowParser::resolve_status()`), and the Settings default-status
+dropdown all already build their options from `Status::all()` directly.
 
 **A related bug, made newly reachable by `RefundHandler`'s existence**:
 `Pro\Warranty\ActivationTrigger`'s "days after Completed" mode schedules
