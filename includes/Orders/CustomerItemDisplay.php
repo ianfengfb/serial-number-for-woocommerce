@@ -11,12 +11,16 @@ defined( 'ABSPATH' ) || exit;
  * order emails, the thank-you page, and the My Account order view all render
  * through the same `woocommerce_order_item_meta_end` hook, unlike the admin
  * order edit screen (`woocommerce_after_order_itemmeta`, see ItemDisplay),
- * so one hook covers all three. Each of the two contexts (emails vs. the
- * order-details page) has its own on/off setting in WooCommerce > Settings >
- * Serial Numbers, both defaulting to on. The order-details page also shows
- * each serial's expiry date, if it has one — emails stay serial-number-only.
- * For a License-enabled product (Pro), the label reads "License Key(s)"
- * instead of "Serial Number(s)" so customers aren't confused by internal
+ * so one hook covers all three. Each of the two *customer-facing* contexts
+ * (emails vs. the order-details page) has its own on/off setting in
+ * WooCommerce > Settings > Serial Numbers, both defaulting to on — an admin
+ * email (e.g. the "New order" notification) always shows serials regardless
+ * of either setting, matching how the admin order edit screen (ItemDisplay)
+ * already always shows them unconditionally; these two settings only ever
+ * control what a *customer* sees. The order-details page also shows each
+ * serial's expiry date, if it has one — emails stay serial-number-only. For
+ * a License-enabled product (Pro), the label reads "License Key(s)" instead
+ * of "Serial Number(s)" so customers aren't confused by internal
  * terminology — same value, different customer-facing word for it.
  */
 final class CustomerItemDisplay {
@@ -31,18 +35,27 @@ final class CustomerItemDisplay {
 	 */
 	private bool $in_email = false;
 
+	/**
+	 * Whether the email currently being rendered is the admin-facing copy
+	 * (`$sent_to_admin` from `woocommerce_email_order_details`) — e.g. the
+	 * "New order" notification. Meaningless while $in_email is false.
+	 */
+	private bool $in_email_to_admin = false;
+
 	public function __construct() {
-		add_action( 'woocommerce_email_order_details', array( $this, 'mark_email_start' ) );
+		add_action( 'woocommerce_email_order_details', array( $this, 'mark_email_start' ), 10, 2 );
 		add_action( 'woocommerce_email_after_order_table', array( $this, 'mark_email_end' ) );
 		add_action( 'woocommerce_order_item_meta_end', array( $this, 'render' ), 10, 4 );
 	}
 
-	public function mark_email_start(): void {
-		$this->in_email = true;
+	public function mark_email_start( $order = null, $sent_to_admin = false ): void {
+		$this->in_email          = true;
+		$this->in_email_to_admin = (bool) $sent_to_admin;
 	}
 
 	public function mark_email_end(): void {
-		$this->in_email = false;
+		$this->in_email          = false;
+		$this->in_email_to_admin = false;
 	}
 
 	/**
@@ -54,10 +67,16 @@ final class CustomerItemDisplay {
 			return;
 		}
 
-		$setting = $this->in_email ? 'snw_show_serials_in_emails' : 'snw_show_serials_in_account';
+		// An admin-facing email always shows serials, same as the admin order
+		// edit screen (ItemDisplay) already does unconditionally — the two
+		// customer-visibility settings below only ever apply to what a
+		// customer sees.
+		if ( ! ( $this->in_email && $this->in_email_to_admin ) ) {
+			$setting = $this->in_email ? 'snw_show_serials_in_emails' : 'snw_show_serials_in_account';
 
-		if ( 'yes' !== get_option( $setting, 'yes' ) ) {
-			return;
+			if ( 'yes' !== get_option( $setting, 'yes' ) ) {
+				return;
+			}
 		}
 
 		$serials = Assigner::serial_rows( $item );
