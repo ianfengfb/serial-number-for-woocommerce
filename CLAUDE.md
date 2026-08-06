@@ -758,7 +758,14 @@ Warranty's:
   future externally-triggered activation the seller wants visibility into).
   A separate `WC_Email` registration from `LicenseActivatedEmail` so the
   admin notice is independently toggleable from the customer-facing one,
-  even though both listen to the same action.
+  even though both listen to the same action. Its own `init_form_fields()`
+  adds the "Recipient(s)" field WooCommerce core's admin-facing emails each
+  define individually (the base `WC_Email` doesn't include one) — left
+  with an empty `'default'`, same as those, so `trigger()` explicitly
+  resolves it via `$this->get_option( 'recipient', get_option( 'admin_email' ) )`
+  on every send rather than baking in whatever `admin_email` was at
+  construction time; an explicitly configured recipient still wins, since
+  that fallback only applies while the setting itself is empty.
 
 ### License renewal (Pro)
 
