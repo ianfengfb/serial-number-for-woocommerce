@@ -1088,23 +1088,30 @@ emails), whereas the admin order edit screen uses
 `woocommerce_after_order_itemmeta` — hence the separate class rather than
 extending `ItemDisplay` onto both hooks.
 
-Each of those two customer-facing contexts has its own on/off setting in
+Each of those two *customer-facing* contexts has its own on/off setting in
 WooCommerce > Settings > Serial Numbers — `snw_show_serials_in_emails` and
 `snw_show_serials_in_account`, both defaulting to `yes` — for stores that
 would rather manage serial numbers internally than show them to the
-customer. Telling the two contexts apart is the tricky part: emails and the
+customer. Neither setting ever hides serials from an admin: an admin
+notification email (e.g. "New order") always shows them, same as the admin
+order edit screen (`ItemDisplay`) already always shows them unconditionally
+— these two settings only ever affect what the customer sees. Telling the
+two customer-facing contexts apart is the tricky part: emails and the
 order-details page both call the item hook with `$plain_text` false, so
 `$plain_text` alone can't distinguish an HTML email from the account page.
 `CustomerItemDisplay` instead brackets itself with WooCommerce's own
 `woocommerce_email_order_details` / `woocommerce_email_after_order_table`
 hooks, which fire once each around an email's entire items table — setting
-an `$in_email` flag true for the former and false for the latter — so
-`render()` knows which setting applies to the item hook firing in between.
-That same flag also decides whether each serial's expiry date is shown
+an `$in_email` flag true for the former and false for the latter, and (from
+`woocommerce_email_order_details`'s own `$sent_to_admin` argument) an
+`$in_email_to_admin` flag — so `render()` knows both which context the item
+hook firing in between is in, and whether to skip the customer-visibility
+check entirely because this is the admin's own copy of the email. That same
+`$in_email` flag also decides whether each serial's expiry date is shown
 alongside it (`Assigner::serial_rows()` returns the full row, not just the
 `serial_number` string, precisely so this and any other display can reach
-`expires_at`) — only the order-details page shows it; emails stay
-serial-number-only.
+`expires_at`) — only the order-details page shows it; emails (admin or
+customer) stay serial-number-only.
 
 Namespaces map 1:1 to folders (PSR-4), files are named after the class they
 contain (e.g. `Admin\Menu` -> `includes/Admin/Menu.php`) — no legacy
