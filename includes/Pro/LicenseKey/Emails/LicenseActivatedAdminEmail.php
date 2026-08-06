@@ -33,8 +33,11 @@ final class LicenseActivatedAdminEmail extends \WC_Email {
 	 * WC_Email's own base init_form_fields() doesn't include a "Recipient(s)"
 	 * field — every admin-facing email in WooCommerce core (e.g. New Order)
 	 * defines its own, and this is the same pattern: without it, the
-	 * settings screen has nothing to override recipient with, so it's stuck
-	 * on the admin_email fallback baked into WC_Email's constructor.
+	 * settings screen has nothing to let a seller override the recipient
+	 * with. The field's own 'default' is deliberately left blank rather than
+	 * baked in as get_option( 'admin_email' ) here, so trigger() below
+	 * always falls back to whatever the site's admin email currently is,
+	 * not whatever it happened to be when this class was first constructed.
 	 */
 	public function init_form_fields(): void {
 		$this->form_fields = array(
@@ -53,7 +56,7 @@ final class LicenseActivatedAdminEmail extends \WC_Email {
 					__( 'Enter recipients (comma separated) for this email. Defaults to %s.', 'serial-number-for-woocommerce' ),
 					'<code>' . esc_attr( get_option( 'admin_email' ) ) . '</code>'
 				),
-				'placeholder' => '',
+				'placeholder' => get_option( 'admin_email' ),
 				'default'     => '',
 			),
 			'subject'            => array(
@@ -110,6 +113,21 @@ final class LicenseActivatedAdminEmail extends \WC_Email {
 			$this->object                          = $serial->order_id ? wc_get_order( $serial->order_id ) : false;
 			$this->placeholders['{serial_number}'] = $serial->serial_number;
 		}
+
+		/*
+		 * Resolved explicitly here, every time, rather than left to
+		 * WC_Email::get_recipient()'s own `$this->recipient ? ... :
+		 * $this->get_option( 'recipient', ... )` fallback: with the
+		 * 'recipient' field's own 'default' left blank (so admin_email is
+		 * always read fresh rather than frozen at whatever it was when this
+		 * class was first constructed), that fallback was never actually
+		 * being reached, leaving this admin notice with nowhere to send —
+		 * unlike every other admin-facing WooCommerce email, which resolves
+		 * the same way. An explicitly configured recipient still wins,
+		 * since get_option() only substitutes admin_email when the stored
+		 * setting is empty.
+		 */
+		$this->recipient = $this->get_option( 'recipient', get_option( 'admin_email' ) );
 
 		if ( $this->is_enabled() && $this->get_recipient() ) {
 			$this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
