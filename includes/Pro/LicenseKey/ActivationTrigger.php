@@ -71,6 +71,13 @@ final class ActivationTrigger {
 	 * order-placed hooks were ever fired more than once for the same order
 	 * (a retried webhook, a re-processing third-party integration), the
 	 * customer never gets a second email re-exposing their key.
+	 *
+	 * A license-renewal line item (Pro\LicenseKey\Renewal) is skipped here:
+	 * it reuses its existing key rather than being handed a fresh one, so
+	 * Assigner never assigns it any serials, and an order made up only of
+	 * renewal items would otherwise still fire this notification with no
+	 * keys for LicenseKey::collect_for_order() to find — an empty delivery
+	 * email on top of the LicenseRenewedEmail the customer already gets.
 	 */
 	private function maybe_notify_delivery( \WC_Order $order ): void {
 		if ( ! Licensing::is_pro_active() || $order->get_meta( self::DELIVERY_NOTIFIED_META_KEY, true ) ) {
@@ -78,7 +85,7 @@ final class ActivationTrigger {
 		}
 
 		foreach ( $order->get_items() as $item ) {
-			if ( ! $item instanceof \WC_Order_Item_Product ) {
+			if ( ! $item instanceof \WC_Order_Item_Product || $item->get_meta( Assigner::RENEWAL_ITEM_META_KEY, true ) ) {
 				continue;
 			}
 
