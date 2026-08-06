@@ -63,6 +63,11 @@ final class Printer {
 	}
 
 	/**
+	 * Uses `Assigner::display_rows()` rather than `serial_rows()` directly,
+	 * so a license-renewal line item — which holds no serial of its own,
+	 * only a reference to the one it renewed — still appears on the slip
+	 * with that key and its new expiry, instead of being skipped entirely.
+	 *
 	 * @return array<int, array{
 	 *     product_name: string,
 	 *     is_license: bool,
@@ -79,7 +84,7 @@ final class Printer {
 				continue;
 			}
 
-			$serials = Assigner::serial_rows( $item );
+			$serials = Assigner::display_rows( $item );
 
 			if ( empty( $serials ) ) {
 				continue;

@@ -6,6 +6,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Free tier: shows a line item's assigned serial numbers on the admin order
  * edit screen, right under its product/qty/price meta.
+ *
+ * Reads `Assigner::display_serial_numbers()` rather than `serial_numbers()`
+ * directly, so a license-renewal line item — which holds no serial of its
+ * own, only a reference to the one it renewed — still shows that key here
+ * instead of appearing empty with a misleading "Add Serial Number" control
+ * underneath it (this item already has its one key; it just isn't a fresh
+ * one).
  */
 final class ItemDisplay {
 
@@ -24,7 +31,7 @@ final class ItemDisplay {
 			return;
 		}
 
-		$serial_numbers = Assigner::serial_numbers( $item );
+		$serial_numbers = Assigner::display_serial_numbers( $item );
 
 		if ( ! empty( $serial_numbers ) ) {
 			?>

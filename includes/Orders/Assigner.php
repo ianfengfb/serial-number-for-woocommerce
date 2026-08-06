@@ -194,6 +194,54 @@ final class Assigner {
 	}
 
 	/**
+	 * Same as serial_rows(), but falls back to the single serial a
+	 * license-renewal line item (Pro\LicenseKey\Renewal) references via
+	 * RENEWAL_ITEM_META_KEY when the item holds none of its own. A renewal
+	 * item never gets an entry in ITEM_META_KEY — assign_for_order() skips
+	 * it deliberately, since it reuses an existing serial rather than
+	 * wanting a fresh one — so every *display* of "this order's serials"
+	 * would otherwise show nothing at all for a renewal purchase, including
+	 * the one thing that actually changed as a result of it: the key's new
+	 * expiry date. Used by every read-only display (ItemDisplay,
+	 * CustomerItemDisplay, Pro\PrintSlip\Printer) rather than serial_rows()
+	 * directly; kept separate from serial_rows()/serial_ids() themselves so
+	 * assignment, activation-trigger, and cancellation/revocation logic —
+	 * which all key off whether an item actually owns a serial — are
+	 * unaffected by this display-only fallback.
+	 */
+	public static function display_rows( \WC_Order_Item_Product $item ): array {
+		$rows = self::serial_rows( $item );
+
+		if ( ! empty( $rows ) ) {
+			return $rows;
+		}
+
+		$renewal_serial_id = (int) $item->get_meta( self::RENEWAL_ITEM_META_KEY, true );
+
+		if ( ! $renewal_serial_id ) {
+			return array();
+		}
+
+		$serial = Repository::find( $renewal_serial_id );
+
+		return $serial ? array( $serial ) : array();
+	}
+
+	/**
+	 * Serial number strings for display_rows() — the renewal-aware
+	 * counterpart to serial_numbers(), for callers that only need the plain
+	 * string.
+	 */
+	public static function display_serial_numbers( \WC_Order_Item_Product $item ): array {
+		return array_map(
+			static function ( $serial ) {
+				return $serial->serial_number;
+			},
+			self::display_rows( $item )
+		);
+	}
+
+	/**
 	 * The reverse of serial_ids(): which of an order's line items holds a
 	 * given serial. Used by Warranty::activate_serial() (Pro) to look up an
 	 * order-item-level warranty extension for a specific serial.

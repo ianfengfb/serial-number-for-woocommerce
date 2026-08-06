@@ -259,7 +259,19 @@ assets/pro/js/admin-license-activation.js Pro: AJAX handler for the admin order 
   `_snw_renewal_serial_id` (`Assigner::RENEWAL_ITEM_META_KEY`) is a sibling
   order-item meta key, set by Pro's Renewal on a license-renewal line item;
   `assign_for_order()` skips any item carrying it, since a renewal reuses
-  its referenced serial rather than wanting a freshly-assigned one.
+  its referenced serial rather than wanting a freshly-assigned one. Because
+  of that, a renewal item has no entry of its own in `_snw_serial_ids` —
+  `Assigner::display_rows()` (and its `display_serial_numbers()` string
+  counterpart) is what every *read-only display* of "this order's serials"
+  should call instead of `serial_rows()`/`serial_numbers()` directly: it
+  falls back to the single serial `_snw_renewal_serial_id` points at when
+  the item holds none of its own, so a renewal order's own item still shows
+  that key and its new expiry (`ItemDisplay`, `CustomerItemDisplay`,
+  `Pro\LicenseKey\CustomerRenewal`, and `Pro\PrintSlip\Printer` all use it)
+  instead of appearing empty. Assignment, activation-trigger, and
+  cancellation/revocation logic all keep reading `serial_ids()`/
+  `serial_rows()` directly — this fallback is display-only, so it doesn't
+  change which order/item a serial is considered to actually belong to.
 - `Repository::import_for_product()` is the single place that turns a block of
   pasted text into rows tied to a product — one per non-empty line, status
   `Status::configured_default()`, duplicates (existing or repeated in the same
@@ -761,7 +773,12 @@ extending), while renewal applies to a specific *already-issued* key
 bought in the past — there's no product page in that flow to put a
 checkbox on. So the customer's entry point is `CustomerRenewal`'s "Renew"
 link on the My Account order view (next to the key, same `is_wc_endpoint_url(
-'view-order' )` scoping as `CustomerActivation`), pointing at
+'view-order' )` scoping as `CustomerActivation`) — reading
+`Assigner::display_rows()` so the link (and `CustomerItemDisplay`'s key/
+expiry line above it) shows up on whichever order the customer most
+recently renewed from, not just the one the key was originally issued on,
+since a renewal order's own item otherwise has no serial of its own to
+find it by — and pointing at
 `wc_get_checkout_url()` with the serial's ID as a `snw_renew_serial` query
 var — deliberately not WooCommerce's generic `?add-to-cart=` URL
 convention, so `Renewal::maybe_start_renewal()` (hooked on
@@ -1050,8 +1067,9 @@ future claiming code on that pattern rather than a plain SELECT-then-UPDATE.
 assigns the difference between an item's quantity and the serials it holds.
 
 `Orders\ItemDisplay` hooks `woocommerce_after_order_itemmeta` to show each
-item's assigned serials (resolved from `Assigner::serial_numbers()`, shared
-with `CustomerItemDisplay`) on the admin order edit screen, and — unless the
+item's assigned serials (resolved from `Assigner::display_serial_numbers()`,
+shared with `CustomerItemDisplay` — see the renewal fallback note in "Data
+model" above) on the admin order edit screen, and — unless the
 item already holds one serial per ordered unit — an "Add Serial Number"
 input + button underneath (a manual override tool, not a top-up, for orders
 whose item was never auto-assigned in the first place, e.g. the product
@@ -1087,8 +1105,9 @@ Available count. On success the page simply reloads rather than patching the
 DOM, since the read-only serial list above is rendered server-side.
 
 `Orders\CustomerItemDisplay` shows the same read-only list
-(`Assigner::serial_rows()`, shared with `ItemDisplay`'s `serial_numbers()`
-rather than re-querying) to the customer, but on a different hook: order emails, the
+(`Assigner::display_rows()`, shared with `ItemDisplay`'s
+`display_serial_numbers()` rather than re-querying) to the customer, but on
+a different hook: order emails, the
 thank-you page, and the My Account order view all render line items through
 `woocommerce_order_item_meta_end` (with a `$plain_text` arg for plain-text
 emails), whereas the admin order edit screen uses

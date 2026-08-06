@@ -13,6 +13,13 @@ defined( 'ABSPATH' ) || exit;
  * check is needed here (WooCommerce's own view-order template already
  * gates the page). Renewal itself (adding to cart, pricing, extending
  * expires_at) lives in Renewal; this class only draws the link.
+ *
+ * Reads `Assigner::display_rows()` rather than `serial_rows()` directly, so
+ * this link (and CustomerItemDisplay's key/expiry line above it) still
+ * appears on a *renewal* order's own item — not just the original order the
+ * key was first issued on — letting a customer who's renewed more than once
+ * keep renewing from whichever order they most recently landed on, instead
+ * of having to dig up the original.
  */
 final class CustomerRenewal {
 
@@ -34,7 +41,7 @@ final class CustomerRenewal {
 		}
 
 		$renewable = array_filter(
-			Assigner::serial_rows( $item ),
+			Assigner::display_rows( $item ),
 			array( Renewal::class, 'is_renewable' )
 		);
 
