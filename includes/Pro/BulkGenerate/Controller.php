@@ -12,7 +12,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Pro: generates many serial numbers at once across one or more
- * prefix / suffix / product / amount rows.
+ * prefix / suffix / character set / random part length / product / amount
+ * rows. Product is optional per row — a blank product generates serials
+ * into the general pool, not tied to any product.
  */
 final class Controller {
 
@@ -41,7 +43,7 @@ final class Controller {
 
 		if ( empty( $rows ) ) {
 			if ( empty( $this->errors ) ) {
-				$this->errors[] = __( 'Add at least one row with a product and an amount.', 'serial-number-for-woocommerce' );
+				$this->errors[] = __( 'Add at least one row with an amount.', 'serial-number-for-woocommerce' );
 			}
 			return;
 		}
@@ -53,8 +55,10 @@ final class Controller {
 			$overrides = CustomRules::resolve_overrides(
 				$row['product_id'],
 				array(
-					'prefix' => $row['prefix'],
-					'suffix' => $row['suffix'],
+					'prefix'  => $row['prefix'],
+					'suffix'  => $row['suffix'],
+					'length'  => $row['length'],
+					'charset' => $row['charset'],
 				)
 			);
 
@@ -71,7 +75,9 @@ final class Controller {
 				++$total;
 			}
 
-			StockSync::sync( $row['product_id'] );
+			if ( $row['product_id'] ) {
+				StockSync::sync( $row['product_id'] );
+			}
 		}
 
 		wp_safe_redirect(
@@ -90,6 +96,11 @@ final class Controller {
 	/**
 	 * Validates and normalizes submitted rows, silently skipping any row left
 	 * completely blank (e.g. an extra "Add Row" click the user never filled in).
+	 *
+	 * A row's product is optional — leaving it blank generates serials into the
+	 * general pool (product_id NULL), same as the Add New form and CSV import
+	 * already allow; there is no requirement to tie generated serials to a
+	 * product.
 	 */
 	private function parse_rows(): array {
 		$posted = isset( $_POST['rows'] ) && is_array( $_POST['rows'] ) ? wp_unslash( $_POST['rows'] ) : array();
@@ -98,19 +109,21 @@ final class Controller {
 		foreach ( $posted as $index => $row ) {
 			$prefix     = isset( $row['prefix'] ) ? sanitize_text_field( $row['prefix'] ) : '';
 			$suffix     = isset( $row['suffix'] ) ? sanitize_text_field( $row['suffix'] ) : '';
+			$charset    = isset( $row['charset'] ) ? sanitize_key( $row['charset'] ) : '';
+			$length     = isset( $row['length'] ) ? absint( $row['length'] ) : 0;
 			$product_id = isset( $row['product_id'] ) ? absint( $row['product_id'] ) : 0;
 			$amount     = isset( $row['amount'] ) ? absint( $row['amount'] ) : 0;
 
-			if ( ! $product_id && ! $amount && '' === $prefix && '' === $suffix ) {
+			if ( ! $product_id && ! $amount && '' === $prefix && '' === $suffix && '' === $charset && ! $length ) {
 				continue;
 			}
 
 			$row_number = (int) $index + 1;
 
-			if ( ! $product_id || ! wc_get_product( $product_id ) ) {
+			if ( $product_id && ! wc_get_product( $product_id ) ) {
 				$this->errors[] = sprintf(
 					/* translators: %d: row number */
-					__( 'Row %d: please choose a product.', 'serial-number-for-woocommerce' ),
+					__( 'Row %d: selected product no longer exists.', 'serial-number-for-woocommerce' ),
 					$row_number
 				);
 				continue;
@@ -126,9 +139,20 @@ final class Controller {
 				continue;
 			}
 
+			if ( $length && ( $length < 1 || $length > 64 ) ) {
+				$this->errors[] = sprintf(
+					/* translators: %d: row number */
+					__( 'Row %d: random part length must be between 1 and 64.', 'serial-number-for-woocommerce' ),
+					$row_number
+				);
+				continue;
+			}
+
 			$rows[] = array(
 				'prefix'     => $prefix,
 				'suffix'     => $suffix,
+				'length'     => $length,
+				'charset'    => $charset,
 				'product_id' => $product_id,
 				'amount'     => $amount,
 			);
@@ -160,7 +184,7 @@ final class Controller {
 				</div>
 			<?php endif; ?>
 
-			<p><?php esc_html_e( 'Leave Prefix/Suffix blank on a row to use that product\'s own custom rule if it has one enabled, otherwise the global rules from WooCommerce > Settings > Serial Numbers.', 'serial-number-for-woocommerce' ); ?></p>
+			<p><?php esc_html_e( 'Leave Prefix/Suffix/Character set/Random part length blank on a row to use that product\'s own custom rule if it has one enabled, otherwise the global rules from WooCommerce > Settings > Serial Numbers. Leave Product blank to generate serials that aren\'t tied to any product.', 'serial-number-for-woocommerce' ); ?></p>
 
 			<form method="post" id="snw-bulk-generate-form">
 				<?php wp_nonce_field( 'snw_bulk_generate_serial_numbers' ); ?>
@@ -169,6 +193,8 @@ final class Controller {
 						<tr>
 							<th><?php esc_html_e( 'Prefix', 'serial-number-for-woocommerce' ); ?></th>
 							<th><?php esc_html_e( 'Suffix', 'serial-number-for-woocommerce' ); ?></th>
+							<th><?php esc_html_e( 'Character set', 'serial-number-for-woocommerce' ); ?></th>
+							<th><?php esc_html_e( 'Random part length', 'serial-number-for-woocommerce' ); ?></th>
 							<th><?php esc_html_e( 'Product', 'serial-number-for-woocommerce' ); ?></th>
 							<th><?php esc_html_e( 'Amount', 'serial-number-for-woocommerce' ); ?></th>
 							<th></th>
@@ -202,11 +228,29 @@ final class Controller {
 			<td><input type="text" name="rows[<?php echo esc_attr( $index ); ?>][prefix]" class="regular-text" /></td>
 			<td><input type="text" name="rows[<?php echo esc_attr( $index ); ?>][suffix]" class="regular-text" /></td>
 			<td>
+				<select name="rows[<?php echo esc_attr( $index ); ?>][charset]">
+					<option value=""><?php esc_html_e( 'Default', 'serial-number-for-woocommerce' ); ?></option>
+					<option value="alphanumeric"><?php esc_html_e( 'Letters and numbers', 'serial-number-for-woocommerce' ); ?></option>
+					<option value="numeric"><?php esc_html_e( 'Numbers only', 'serial-number-for-woocommerce' ); ?></option>
+					<option value="alpha"><?php esc_html_e( 'Letters only', 'serial-number-for-woocommerce' ); ?></option>
+				</select>
+			</td>
+			<td>
+				<input
+					type="number"
+					name="rows[<?php echo esc_attr( $index ); ?>][length]"
+					min="1"
+					max="64"
+					placeholder="<?php esc_attr_e( 'Default', 'serial-number-for-woocommerce' ); ?>"
+					class="small-text"
+				/>
+			</td>
+			<td>
 				<select
 					name="rows[<?php echo esc_attr( $index ); ?>][product_id]"
 					class="snw-search-select"
 					data-type="product"
-					data-placeholder="<?php esc_attr_e( 'Search for a product&hellip;', 'serial-number-for-woocommerce' ); ?>"
+					data-placeholder="<?php esc_attr_e( 'No product&hellip;', 'serial-number-for-woocommerce' ); ?>"
 				>
 					<option value=""></option>
 				</select>
