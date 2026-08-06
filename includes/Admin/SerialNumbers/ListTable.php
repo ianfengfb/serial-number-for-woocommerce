@@ -40,6 +40,12 @@ final class ListTable extends \WP_List_Table {
 		);
 	}
 
+	protected function get_sortable_columns(): array {
+		return array(
+			'expires_at' => array( 'expires_at', false ),
+		);
+	}
+
 	public function column_cb( $item ): string {
 		return sprintf( '<input type="checkbox" name="serial_ids[]" value="%d" />', (int) $item->id );
 	}
@@ -52,11 +58,15 @@ final class ListTable extends \WP_List_Table {
 		$filters = array(
 			'no_product' => isset( $_REQUEST['snw_filter_no_product'] ) ? 1 : 0,
 			'product_id' => isset( $_REQUEST['snw_filter_product_id'] ) ? absint( $_REQUEST['snw_filter_product_id'] ) : 0,
+			'status'     => isset( $_REQUEST['snw_filter_status'] ) ? sanitize_key( wp_unslash( $_REQUEST['snw_filter_status'] ) ) : '',
 		);
 
-		$this->_column_headers = array( $this->get_columns(), array(), array() );
+		$orderby = isset( $_REQUEST['orderby'] ) ? sanitize_key( wp_unslash( $_REQUEST['orderby'] ) ) : '';
+		$order   = isset( $_REQUEST['order'] ) ? sanitize_key( wp_unslash( $_REQUEST['order'] ) ) : '';
 
-		$result = Repository::search( $search, $per_page, $current_page, $filters );
+		$this->_column_headers = array( $this->get_columns(), array(), $this->get_sortable_columns() );
+
+		$result = Repository::search( $search, $per_page, $current_page, $filters, $orderby, $order );
 
 		$this->items = $result['items'];
 
