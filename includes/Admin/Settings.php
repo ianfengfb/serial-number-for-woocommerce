@@ -147,7 +147,7 @@ final class Settings extends \WC_Settings_Page {
 			array(
 				'title' => __( 'Customer visibility', 'serial-number-for-woocommerce' ),
 				'type'  => 'title',
-				'desc'  => __( 'Serial numbers are always visible to store admins on the order edit screen. These control whether customers see them too — some stores prefer to manage serial numbers internally instead, so turn both off to keep them admin-only. Print Slip (Pro), below, lets you hand a serial number/license key to the customer on paper instead of showing it online at all.', 'serial-number-for-woocommerce' ),
+				'desc'  => __( 'Serial numbers are always visible to store admins — on the order edit screen and in admin notification emails (e.g. "New order"). These two settings only control whether customers see them too — some stores prefer to manage serial numbers internally instead, so turn both off to keep them admin-only. Print Slip (Pro), below, lets you hand a serial number/license key to the customer on paper instead of showing it online at all.', 'serial-number-for-woocommerce' ),
 				'id'    => 'snw_customer_visibility_settings',
 			),
 			array(
