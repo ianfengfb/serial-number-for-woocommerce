@@ -5,6 +5,7 @@ use SerialNumberForWooCommerce\Admin\SerialNumbers\Ajax;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\FormController;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\ListTable;
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
+use SerialNumberForWooCommerce\Admin\SerialNumbers\Status;
 use SerialNumberForWooCommerce\Admin\Support\Support;
 use SerialNumberForWooCommerce\Licensing;
 use SerialNumberForWooCommerce\Pro\BulkGenerate\Controller as BulkGenerateController;
@@ -305,6 +306,7 @@ final class Menu {
 
 		$filter_product_id = isset( $_GET['snw_filter_product_id'] ) ? absint( $_GET['snw_filter_product_id'] ) : 0;
 		$filter_no_product = isset( $_GET['snw_filter_no_product'] );
+		$filter_status      = isset( $_GET['snw_filter_status'] ) ? sanitize_key( wp_unslash( $_GET['snw_filter_status'] ) ) : '';
 		$filter_search      = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 
 		$export_args = array( 'action' => 'snw_export_serials' );
@@ -317,6 +319,10 @@ final class Menu {
 			$export_args['snw_filter_no_product'] = 1;
 		} elseif ( $filter_product_id ) {
 			$export_args['snw_filter_product_id'] = $filter_product_id;
+		}
+
+		if ( '' !== $filter_status && Status::exists( $filter_status ) ) {
+			$export_args['snw_filter_status'] = $filter_status;
 		}
 
 		$export_url = wp_nonce_url( add_query_arg( $export_args, admin_url( 'admin-post.php' ) ), 'snw_export_serials' );
@@ -454,6 +460,14 @@ final class Menu {
 						<input type="checkbox" id="snw-filter-no-product" name="snw_filter_no_product" value="1" <?php checked( $filter_no_product ); ?> />
 						<?php esc_html_e( 'No product', 'serial-number-for-woocommerce' ); ?>
 					</label>
+
+					<label for="snw-filter-status"><strong><?php esc_html_e( 'Filter by status:', 'serial-number-for-woocommerce' ); ?></strong></label>
+					<select id="snw-filter-status" name="snw_filter_status">
+						<option value=""><?php esc_html_e( 'All statuses', 'serial-number-for-woocommerce' ); ?></option>
+						<?php foreach ( Status::all() as $status_value => $status_label ) : ?>
+							<option value="<?php echo esc_attr( $status_value ); ?>" <?php selected( $filter_status, $status_value ); ?>><?php echo esc_html( $status_label ); ?></option>
+						<?php endforeach; ?>
+					</select>
 				</p>
 
 				<?php
@@ -482,6 +496,10 @@ final class Menu {
 					$noProductFilter.prop( 'checked', false );
 				}
 
+				this.form.submit();
+			} );
+
+			$( '#snw-filter-status' ).on( 'change', function () {
 				this.form.submit();
 			} );
 		} );

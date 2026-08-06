@@ -273,7 +273,10 @@ final class Repository {
 	 * @param array $filters Optional: 'product_id' (int) filters to that
 	 *                       product; 'no_product' (truthy) filters to rows
 	 *                       with no product at all and wins over 'product_id'
-	 *                       if both are given.
+	 *                       if both are given; 'status' (string) filters to
+	 *                       that exact status value (validated against
+	 *                       Status::exists() so an invalid value is ignored
+	 *                       rather than matching nothing).
 	 */
 	private static function build_where( string $search, array $filters ): array {
 		global $wpdb;
@@ -293,22 +296,45 @@ final class Repository {
 			$params[] = (int) $filters['product_id'];
 		}
 
+		if ( ! empty( $filters['status'] ) && Status::exists( $filters['status'] ) ) {
+			$where[]  = 'status = %s';
+			$params[] = $filters['status'];
+		}
+
 		return array(
 			'sql'    => $where ? ( 'WHERE ' . implode( ' AND ', $where ) ) : '',
 			'params' => $params,
 		);
 	}
 
-	public static function search( string $search, int $per_page, int $page, array $filters = array() ): array {
+	/**
+	 * Whitelists $orderby/$order against the list table's one sortable
+	 * column (Expires On) so an arbitrary query string value can never reach
+	 * raw SQL; anything else — including no value at all — falls back to the
+	 * default newest-first order. `id DESC` is always the tie-breaker so rows
+	 * sharing the same (or NULL) expires_at still sort in a stable order.
+	 */
+	private static function build_orderby( string $orderby, string $order ): string {
+		$direction = 'ASC' === strtoupper( $order ) ? 'ASC' : 'DESC';
+
+		if ( 'expires_at' === $orderby ) {
+			return "expires_at {$direction}, id DESC";
+		}
+
+		return 'id DESC';
+	}
+
+	public static function search( string $search, int $per_page, int $page, array $filters = array(), string $orderby = '', string $order = '' ): array {
 		global $wpdb;
 
-		$table  = self::table_name();
-		$offset = ( max( 1, $page ) - 1 ) * $per_page;
-		$built  = self::build_where( $search, $filters );
+		$table    = self::table_name();
+		$offset   = ( max( 1, $page ) - 1 ) * $per_page;
+		$built    = self::build_where( $search, $filters );
+		$order_by = self::build_orderby( $orderby, $order );
 
 		$items = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$table} {$built['sql']} ORDER BY id DESC LIMIT %d OFFSET %d",
+				"SELECT * FROM {$table} {$built['sql']} ORDER BY {$order_by} LIMIT %d OFFSET %d",
 				array_merge( $built['params'], array( $per_page, $offset ) )
 			)
 		);
