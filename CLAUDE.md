@@ -708,7 +708,14 @@ Warranty's:
   order as `activate_serial()`'s own idempotency guard), so the
   order-placed hooks firing more than once for the same order — a retried
   webhook, a re-processing third-party integration — can never send a
-  second delivery email re-exposing the key. Its template loops over every license-enabled item
+  second delivery email re-exposing the key. `maybe_notify_delivery()`
+  also skips any item carrying `Assigner::RENEWAL_ITEM_META_KEY`: a
+  renewal reuses its existing key rather than being handed a fresh one
+  (see License renewal below), so an order made up only of renewal items
+  would otherwise still fire this notification with nothing for
+  `collect_for_order()` to find — an empty delivery email on top of the
+  `LicenseRenewedEmail` the customer already gets for the renewal itself.
+  Its template loops over every license-enabled item
   (`LicenseKey::collect_for_order()` — shared with Webhooks' own
   `license.delivered` payload, below, so the two can't drift apart on what
   counts as "this order's licenses"), pairing each product's keys with
