@@ -93,7 +93,7 @@ final class Settings extends \WC_Settings_Page {
 			array(
 				'title' => __( 'Auto-generation', 'serial-number-for-woocommerce' ),
 				'type'  => 'title',
-				'desc'  => __( 'Rules used by the "Generate" button when creating a serial number automatically. The generated value is <code>prefix-random-postfix</code> (dashes are only added around a prefix or postfix that is set).', 'serial-number-for-woocommerce' ),
+				'desc'  => __( 'Rules used by the "Generate" button when creating a serial number automatically. The generated value is <code>prefix-random-suffix</code> (dashes are only added around a prefix or suffix that is set).', 'serial-number-for-woocommerce' ),
 				'id'    => 'snw_generation_settings',
 			),
 			array(
@@ -105,7 +105,7 @@ final class Settings extends \WC_Settings_Page {
 				'desc_tip' => true,
 			),
 			array(
-				'title'    => __( 'Postfix', 'serial-number-for-woocommerce' ),
+				'title'    => __( 'Suffix', 'serial-number-for-woocommerce' ),
 				'desc'     => __( 'Text appended to every generated serial number. Leave blank for none.', 'serial-number-for-woocommerce' ),
 				'id'       => 'snw_auto_postfix',
 				'type'     => 'text',
@@ -128,7 +128,7 @@ final class Settings extends \WC_Settings_Page {
 			),
 			array(
 				'title'             => __( 'Random part length', 'serial-number-for-woocommerce' ),
-				'desc'              => __( 'Number of random characters generated between the prefix and postfix.', 'serial-number-for-woocommerce' ),
+				'desc'              => __( 'Number of random characters generated between the prefix and suffix.', 'serial-number-for-woocommerce' ),
 				'id'                => 'snw_auto_length',
 				'type'              => 'number',
 				'default'           => 12,

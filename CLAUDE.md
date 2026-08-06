@@ -114,7 +114,8 @@ includes/
     StockSync/StockSync.php         Pro: mirrors a product's Available pool count onto WC stock
     CustomRules/CustomRules.php     Pro: a product's own auto-generation rule, overriding the global one
     CustomRules/Ajax.php            Pro: wp_ajax_snw_bulk_generate_for_product (product tab's own bulk-generate)
-    BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/product/amount) bulk serial generation page
+    BulkGenerate/Controller.php     Pro: multi-row (prefix/suffix/charset/length/product/amount) bulk serial
+                                     generation page — product is optional per row (blank -> general pool)
     Export/Exporter.php             Pro: streams the (optionally filtered) list as a CSV via admin_post
     Import/Controller.php           Pro: CSV import page — upload+parse, transient-backed preview, commit
     Import/RowParser.php            Pro: pure per-row parsing/validation shared by preview and commit
@@ -365,8 +366,9 @@ over the product's stored rule for that one call. Both bulk-generate paths
 go through this: `Pro\CustomRules\Ajax` (the product tab's own "Bulk
 generate for this product" button, no extra overrides — just the product's
 rule or global) and `Pro\BulkGenerate\Controller` (each row's own
-prefix/suffix are passed as `$extra_overrides`, so an explicit row value
-still wins over that row's product's custom rule). Rule field values persist
+prefix/suffix/character set/random part length are passed as
+`$extra_overrides`, so an explicit row value still wins over that row's
+product's custom rule). Rule field values persist
 even while `_snw_custom_rule_enabled` is off, so re-checking it later
 doesn't lose what was typed — `is_enabled_for_product()` alone gates whether
 they take effect, same pattern as `StockSync`.
