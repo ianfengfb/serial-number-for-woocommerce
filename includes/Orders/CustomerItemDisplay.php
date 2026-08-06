@@ -21,7 +21,11 @@ defined( 'ABSPATH' ) || exit;
  * serial's expiry date, if it has one — emails stay serial-number-only. For
  * a License-enabled product (Pro), the label reads "License Key(s)" instead
  * of "Serial Number(s)" so customers aren't confused by internal
- * terminology — same value, different customer-facing word for it.
+ * terminology — same value, different customer-facing word for it. Reads
+ * `Assigner::display_rows()` rather than `serial_rows()` directly, so a
+ * license-renewal line item — which holds no serial of its own, only a
+ * reference to the one it renewed — still shows that key and its new
+ * expiry here, instead of appearing empty.
  */
 final class CustomerItemDisplay {
 
@@ -79,7 +83,7 @@ final class CustomerItemDisplay {
 			}
 		}
 
-		$serials = Assigner::serial_rows( $item );
+		$serials = Assigner::display_rows( $item );
 
 		if ( empty( $serials ) ) {
 			return;
