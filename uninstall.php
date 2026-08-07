@@ -95,6 +95,7 @@ foreach ( $product_meta_keys as $meta_key ) {
 $order_item_meta_keys = array(
 	'_snw_serial_ids',
 	'_snw_renewal_serial_id',
+	'_snw_renewal_applied',
 	'_snw_warranty_extension',
 );
 

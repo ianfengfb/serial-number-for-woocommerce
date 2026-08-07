@@ -27,6 +27,20 @@ final class Renewal {
 	/** Cart item data key holding the serial ID being renewed. */
 	const CART_ITEM_KEY = 'snw_renewal_serial_id';
 
+	/**
+	 * Order-item meta marking that on_order() has already renewed this
+	 * item's serial. The order-placed hooks below (classic, Store API, and
+	 * the legacy-compat firing WooCommerce Blocks checkout does for the
+	 * classic one alongside its own) can fire more than once for the same
+	 * order — every other trigger in this codebase reacting to the same
+	 * hook family already guards against that (Assigner::assign_for_order()
+	 * only assigns the shortfall; LicenseKey::activate_serial() checks
+	 * activated_at) — but is_renewable() has nothing that changes once a
+	 * renewal applies (the serial stays Activated either way), so without
+	 * this guard a second firing would extend expires_at a second time.
+	 */
+	const RENEWAL_APPLIED_META_KEY = '_snw_renewal_applied';
+
 	public function __construct() {
 		add_action( 'template_redirect', array( $this, 'maybe_start_renewal' ) );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'adjust_price' ) );
@@ -192,14 +206,15 @@ final class Renewal {
 		}
 
 		foreach ( $order->get_items() as $item ) {
-			if ( ! $item instanceof \WC_Order_Item_Product ) {
+			if ( ! $item instanceof \WC_Order_Item_Product || $item->get_meta( self::RENEWAL_APPLIED_META_KEY, true ) ) {
 				continue;
 			}
 
 			$serial_id = (int) $item->get_meta( Assigner::RENEWAL_ITEM_META_KEY, true );
 
-			if ( $serial_id ) {
-				self::renew_serial( $serial_id );
+			if ( $serial_id && self::renew_serial( $serial_id ) ) {
+				$item->add_meta_data( self::RENEWAL_APPLIED_META_KEY, 'yes' );
+				$item->save_meta_data();
 			}
 		}
 	}
