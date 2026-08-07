@@ -32,6 +32,7 @@ final class Plugin {
 		new Orders\RefundHandler();
 
 		if ( Licensing::is_pro_active() ) {
+			new Pro\StockSync\StockSync();
 			new Pro\CustomRules\Ajax();
 			new Pro\Export\Exporter();
 			new Pro\Warranty\ActivationTrigger();
