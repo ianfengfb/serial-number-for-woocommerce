@@ -817,18 +817,29 @@ the order item as `Assigner::RENEWAL_ITEM_META_KEY` at checkout.
 items and calls `renew_serial()` for any item carrying that meta —
 immediately, with no per-product trigger choice the way initial
 activation has, since renewal is a one-off action the customer just paid
-for. `renew_serial()` re-validates `is_renewable()` itself rather than
-trusting the cart-time check (the serial's eligibility could have changed
-while it sat in the cart), then extends `expires_at` from whichever is
-later, the serial's current expiry or now — so renewing before expiry
-stacks the new term on top of what's left instead of wasting it, while
-the common case (renewing after expiry) just starts the new term from
-today. `Repository::renew()` is the primitive this calls: Activated (in
-case it had flipped to Expired) with the new `expires_at`, leaving
-`activated_at` untouched since renewing isn't a fresh activation. Fires
-`snw_license_renewed` (serial ID, new `expires_at`) for both the
-`license.renewed` webhook topic (see below) and `LicenseRenewedEmail`
-(see License emails) to listen on.
+for. Guarded per-item by `Renewal::RENEWAL_APPLIED_META_KEY`
+(`_snw_renewal_applied`, set right after a successful `renew_serial()`
+call, same "persist state, then move on" ordering as every other
+idempotency guard in this codebase): the classic/Store API/Blocks
+checkout-processed hooks this is bound to are already known to be able to
+fire more than once for the same order (see `Assigner::assign_for_order()`'s
+own "safe to call again" framing), and unlike activation — where
+`activate_serial()`'s `activated_at` check makes a second call a no-op —
+`is_renewable()` has nothing that changes once a renewal applies (the
+serial stays Activated either way), so without this guard a second firing
+would silently extend `expires_at` a second time, e.g. a 2-year license
+jumping 4 years instead of 2. `renew_serial()` itself still re-validates
+`is_renewable()` rather than trusting the cart-time check (the serial's
+eligibility could have changed while it sat in the cart), then extends
+`expires_at` from whichever is later, the serial's current expiry or now —
+so renewing before expiry stacks the new term on top of what's left
+instead of wasting it, while the common case (renewing after expiry) just
+starts the new term from today. `Repository::renew()` is the primitive
+this calls: Activated (in case it had flipped to Expired) with the new
+`expires_at`, leaving `activated_at` untouched since renewing isn't a
+fresh activation. Fires `snw_license_renewed` (serial ID, new
+`expires_at`) for both the `license.renewed` webhook topic (see below)
+and `LicenseRenewedEmail` (see License emails) to listen on.
 
 One known scope limit: a renewal purchase is always exactly one term at a
 time, regardless of quantity — `on_order()` doesn't multiply the
