@@ -14,6 +14,51 @@ defined( 'ABSPATH' ) || exit;
  */
 final class StockSync {
 
+	/**
+	 * sync() below always turns _manage_stock on (needed so WooCommerce
+	 * displays the numeric count at all) — which also makes WooCommerce's
+	 * own native stock reduction (wc_reduce_stock_levels(), fired on
+	 * payment-complete and several order-status transitions) treat this
+	 * product exactly like any normal stock-managed one, independently
+	 * decrementing _stock by the ordered quantity with no idea this
+	 * plugin already recomputed the correct post-purchase count from the
+	 * serial pool. Left alone, that's a double reduction on top of ours.
+	 *
+	 * Rather than trying to intercept WooCommerce's own reduction (its
+	 * exact trigger hook varies by payment gateway/order flow), this
+	 * re-runs sync() itself — an idempotent, absolute recompute from
+	 * count_available(), not a relative decrement — on every event that
+	 * could plausibly be the one WooCommerce reduces stock on, so
+	 * whatever WooCommerce's native logic just did to _stock is always
+	 * immediately corrected back to the true pool count.
+	 */
+	const RESYNC_HOOKS = array(
+		'woocommerce_payment_complete',
+		'woocommerce_order_status_processing',
+		'woocommerce_order_status_on-hold',
+		'woocommerce_order_status_completed',
+	);
+
+	public function __construct() {
+		foreach ( self::RESYNC_HOOKS as $hook ) {
+			add_action( $hook, array( $this, 'resync_order_items' ), 20 );
+		}
+	}
+
+	public function resync_order_items( int $order_id ): void {
+		$order = wc_get_order( $order_id );
+
+		if ( ! $order instanceof \WC_Order ) {
+			return;
+		}
+
+		foreach ( $order->get_items() as $item ) {
+			if ( $item instanceof \WC_Order_Item_Product && $item->get_product_id() ) {
+				self::sync( $item->get_product_id() );
+			}
+		}
+	}
+
 	public static function is_enabled_for_product( int $product_id ): bool {
 		return 'yes' === get_post_meta( $product_id, ProductTab::META_KEY, true )
 			&& 'yes' === get_post_meta( $product_id, ProductTab::MANAGE_STOCK_META_KEY, true );
