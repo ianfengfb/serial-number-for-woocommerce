@@ -1361,6 +1361,15 @@ partial refund that happened before this version was installed) pointing
 the seller at that item's serial list — the Add/Edit form's status
 `<select>` is already unrestricted, so a seller who's told where to look
 can set the right serial's status by hand with no further gap to fill.
+That per-item check can't catch a refund made against the order's own
+lump "Refund amount" field instead of any item's Qty, though, so
+`RefundHandler::render_partial_refund_notice()` (hooked on
+`woocommerce_admin_order_data_after_order_details`, so it renders once
+per order rather than once per item) is a coarser backstop: any order
+carrying `get_total_refunded() > 0` that hasn't reached the "Refunded"
+status (a full refund — already auto-released above) gets one order-level
+notice pointing the seller at this order's serials generally, regardless
+of whether any specific item's own notice also fired.
 
 Known scope limit, documented rather than solved: restoring a cancelled/
 refunded order back to an active status never re-claims a released
