@@ -48,6 +48,7 @@ final class Plugin {
 			new Pro\LicenseKey\CustomerRenewal();
 			new Pro\LicenseKey\Webhooks();
 			new Pro\PrintSlip\Printer();
+			new Pro\SerialNumberNotice\Ajax();
 
 			add_filter(
 				'woocommerce_email_classes',
@@ -59,6 +60,7 @@ final class Plugin {
 					$emails['SNW_License_Expired_Email']         = new Pro\LicenseKey\Emails\LicenseExpiredEmail();
 					$emails['SNW_License_Renewed_Email']         = new Pro\LicenseKey\Emails\LicenseRenewedEmail();
 					$emails['SNW_License_Activated_Admin_Email'] = new Pro\LicenseKey\Emails\LicenseActivatedAdminEmail();
+					$emails['SNW_Serial_Number_Notice_Email']    = new Pro\SerialNumberNotice\SerialNumberNoticeEmail();
 
 					return $emails;
 				}

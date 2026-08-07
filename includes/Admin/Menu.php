@@ -100,6 +100,27 @@ final class Menu {
 				true
 			);
 		}
+
+		if ( '' === $action && Licensing::is_pro_active() ) {
+			wp_enqueue_script(
+				'snw-resend-email',
+				SNW_PLUGIN_URL . 'assets/pro/js/resend-email.js',
+				array( 'jquery', 'snw-admin' ),
+				SNW_VERSION,
+				true
+			);
+
+			wp_localize_script(
+				'snw-resend-email',
+				'SNWResendEmail',
+				array(
+					'confirmText' => __( 'Send this email now?', 'serial-number-for-woocommerce' ),
+					'sendingText' => __( 'Sending…', 'serial-number-for-woocommerce' ),
+					'sentText'    => __( 'Email sent.', 'serial-number-for-woocommerce' ),
+					'errorText'   => __( 'Request failed. Please try again.', 'serial-number-for-woocommerce' ),
+				)
+			);
+		}
 	}
 
 	public function render_page(): void {

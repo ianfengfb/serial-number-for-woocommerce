@@ -170,13 +170,23 @@ includes/
                                      independently toggleable from the customer-facing one
     PrintSlip/Printer.php           Pro: admin_post_snw_print_slip handler — streams a standalone,
                                      themeable HTML slip for one order's serial numbers/license keys
-templates/emails/                   Warranty and License notification email templates (HTML +
+    SerialNumberNotice/
+      SerialNumberNoticeEmail.php   Pro: customer email with no automatic trigger of its own — only ever
+                                     sent via Resend, for a plain (non-License, non-Warranty) serial number
+      Resend.php                    Pro: decides which send/resend action(s) apply to a serial row on the
+                                     list (by status + product's License/Warranty enablement) and maps
+                                     each to the action hook that actually sends it
+      Ajax.php                      Pro: wp_ajax_snw_resend_email backing the list's row action(s), fires
+                                     the resolved action after re-validating it's still applicable
+templates/emails/                   Warranty, License, and Serial Number Notice email templates (HTML +
                                      templates/emails/plain/),
                                      theme-overridable the same way WooCommerce's own email templates are
 templates/print/order-slip.php      Pro: the Print Slip template — the first non-email themeable template,
                                      same wc_get_template_html() override mechanism as templates/emails/
 assets/js/admin.js                  Enqueued only on the Serial Numbers screen; inits select2 AJAX search,
                                      exposes window.snwInitSearchSelects for Pro views to reuse
+assets/pro/js/resend-email.js       Pro: AJAX handler for the list's send/resend-email row action(s),
+                                     enqueued only on the list view itself
 assets/js/support.js                 Enqueued only on the Support page; AJAX-submits the contact form,
                                      reusing the same SNWAdmin localized object as admin.js
 assets/vendor/select2/              Vendored select2 (JS+CSS) — bundled rather than relying on WooCommerce's
@@ -961,6 +971,71 @@ Deliberately no shipping address on the slip: it's a digital record, not
 a packing-slip insert, since serial/license products are typically
 virtual — a seller who genuinely needs a physical packing-slip workflow
 isn't the primary case this was built for.
+
+## Send/resend email (Pro)
+
+Per-row action(s) on the Serial Numbers list — visible only once a serial
+is tied to an order (`$serial->order_id` set) — letting a seller manually
+notify (or re-notify) that customer, for cases the automatic emails/pages
+already documented above don't cover: something went wrong at checkout,
+the store's own "Show in order emails"/"Show on order details page"
+settings were off at the time, or the seller just wants to send it again.
+
+`Pro\SerialNumberNotice\Resend::actions_for_serial( $serial )` is the
+single place that decides which action(s) apply to a given row, and is
+called from both `ListTable::column_serial_number()` (to draw the row
+action links) and `Pro\SerialNumberNotice\Ajax::resend_email()` (to
+re-validate the posted `email_type` server-side, never trusting the
+browser's choice on its own — same posture as every other AJAX handler in
+this plugin acting on a row a user picked):
+
+- **License-enabled product, status Activated/Expired** → "Resend License
+  Activated/Expired Email" (the existing `LicenseActivatedEmail`/
+  `LicenseExpiredEmail`).
+- **Warranty-enabled product, status Activated/Expired** → "Resend
+  Warranty Activated/Expired Email" (the existing `WarrantyActivatedEmail`/
+  `WarrantyExpiredEmail`). A product with *both* features enabled at once
+  shows both sets of actions rather than guessing which one the seller
+  means.
+- **Everything else** (a plain serial, or a License/Warranty product whose
+  serial hasn't reached either status yet) → "Send Serial Number Email",
+  a brand-new `Pro\SerialNumberNotice\SerialNumberNoticeEmail` — the only
+  email in this plugin with no automatic trigger of its own at all; it
+  exists solely to be fired this way.
+
+Firing reuses each existing email class's own `trigger( $serial_id )`
+unchanged (it only reads and sends, never mutates the serial's state, so
+it's always safe to call again) — but through a *second*, dedicated action
+per class (`snw_resend_license_activated`, `snw_resend_license_expired`,
+`snw_resend_warranty_activated`, `snw_resend_warranty_expired`) rather than
+re-firing the original automatic one (`snw_license_activated` etc.).
+Reusing the original would also re-trigger `LicenseActivatedAdminEmail`
+(which listens on that same hook) every time a seller manually resends the
+*customer* copy — the dedicated hook keeps this a precise "resend just
+this one customer email" action. `Resend::action_hook()` maps each
+`email_type` to its actual hook name.
+
+`Pro\SerialNumberNotice\Ajax`'s `wp_ajax_snw_resend_email` handler checks
+`manage_woocommerce`, re-resolves the serial and re-runs
+`actions_for_serial()` to confirm the posted `email_type` is still valid
+for it right now, confirms the order still has a billing email to send
+to, then fires the resolved hook and reports success — it doesn't (and
+can't cheaply) confirm the send itself succeeded past that point, same
+"fail quiet, not loud" posture documented for every other email trigger
+in this plugin.
+
+The row action(s) are omitted entirely when unlicensed — not a disabled
+PRO-badge teaser — matching this plugin's other *per-row* Pro control
+(the admin order screen's own "Activate License" button), rather than the
+page-level teaser convention (Bulk Generate, Export CSV): a dense list
+table is the wrong place for another visible-but-inert control per row.
+`ListTable::column_serial_number()` still has to gate the call to
+`Resend::actions_for_serial()` behind `Licensing::is_pro_active()` itself
+even though that method checks the same thing internally — the *call
+site* has to be unreachable in the free zip, since referencing a
+`Pro\SerialNumberNotice\Resend` class that doesn't exist there at all
+would fatal otherwise, same reasoning as every other Free→Pro reference
+in this codebase.
 
 ## CSV export (Pro)
 

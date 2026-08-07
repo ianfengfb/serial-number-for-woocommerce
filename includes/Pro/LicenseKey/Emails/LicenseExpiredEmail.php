@@ -9,7 +9,10 @@ defined( 'ABSPATH' ) || exit;
  * Pro: notifies the customer when a license expires. Fired from
  * Pro\Warranty\ExpiryChecker via the generic `snw_serial_expired` action
  * (shared with Warranty), so is_relevant() filters out anything that isn't
- * actually license-governed.
+ * actually license-governed. Also manually re-sendable from the Serial
+ * Numbers list (Pro\SerialNumberNotice\Resend) via its own
+ * `snw_resend_license_expired` action — that one is always license-only by
+ * construction, so no is_relevant() check is needed for it.
  */
 final class LicenseExpiredEmail extends AbstractLicenseEmail {
 
@@ -22,6 +25,7 @@ final class LicenseExpiredEmail extends AbstractLicenseEmail {
 		$this->configure_common();
 
 		add_action( 'snw_serial_expired', array( $this, 'trigger' ), 10, 1 );
+		add_action( 'snw_resend_license_expired', array( $this, 'trigger' ), 10, 1 );
 
 		parent::__construct();
 	}
