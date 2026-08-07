@@ -1,6 +1,9 @@
 <?php
 namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
 
+use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\SerialNumberNotice\Resend;
+
 defined( 'ABSPATH' ) || exit;
 
 if ( ! class_exists( '\WP_List_Table' ) ) {
@@ -118,6 +121,24 @@ final class ListTable extends \WP_List_Table {
 				esc_html__( 'Delete', 'serial-number-for-woocommerce' )
 			),
 		);
+
+		// Pro: send/resend a customer notification about this specific serial
+		// number, when it's tied to an order — omitted entirely (not a
+		// disabled teaser) when unlicensed, same as the admin order screen's
+		// own per-row "Activate License" button. Resend::actions_for_serial()
+		// already checks Licensing::is_pro_active() itself, but the call site
+		// still has to be gated too: referencing the Pro\SerialNumberNotice\Resend
+		// class at all would fatal in the free zip, where includes/Pro/ doesn't exist.
+		if ( Licensing::is_pro_active() ) {
+			foreach ( Resend::actions_for_serial( $item ) as $email_type => $label ) {
+				$actions[ 'resend_' . $email_type ] = sprintf(
+					'<a href="#" class="snw-resend-email-link" data-serial-id="%d" data-email-type="%s">%s</a>',
+					(int) $item->id,
+					esc_attr( $email_type ),
+					esc_html( $label )
+				);
+			}
+		}
 
 		return esc_html( $item->serial_number ) . $this->row_actions( $actions );
 	}

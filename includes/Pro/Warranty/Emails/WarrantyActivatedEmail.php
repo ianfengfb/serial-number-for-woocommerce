@@ -6,7 +6,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Pro: notifies the customer when a serial number's warranty activates.
  * Fired from Warranty::activate_serial() via the `snw_warranty_activated`
- * action.
+ * action, or manually re-sent from the Serial Numbers list
+ * (Pro\SerialNumberNotice\Resend) via `snw_resend_warranty_activated` — same
+ * `trigger()` either way, since it only reads and sends, it never mutates
+ * the serial's own state.
  */
 final class WarrantyActivatedEmail extends AbstractWarrantyEmail {
 
@@ -19,6 +22,7 @@ final class WarrantyActivatedEmail extends AbstractWarrantyEmail {
 		$this->configure_common();
 
 		add_action( 'snw_warranty_activated', array( $this, 'trigger' ), 10, 1 );
+		add_action( 'snw_resend_warranty_activated', array( $this, 'trigger' ), 10, 1 );
 
 		parent::__construct();
 	}
