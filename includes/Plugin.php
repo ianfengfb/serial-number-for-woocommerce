@@ -65,6 +65,31 @@ final class Plugin {
 					return $emails;
 				}
 			);
+
+			/*
+			 * Forces WC_Emails to construct now (applying the filter above,
+			 * so every Pro email class's own add_action( 'snw_..._activated',
+			 * ... ) listener is registered) rather than leaving that to
+			 * WooCommerce's own lazy initialization. A normal checkout or
+			 * order-status-change request reliably triggers that lazy init
+			 * as a side effect of WooCommerce needing to send its own native
+			 * email on the same event — but this plugin's manually-triggered
+			 * paths (the admin order screen's "Activate" button, the
+			 * customer's own self-activation AJAX, the external REST
+			 * activation endpoint, and the Serial Numbers list's resend
+			 * action) fire from a bare AJAX/REST request with no such event
+			 * to piggyback on. Without this, do_action( 'snw_license_activated',
+			 * ... ) (etc.) would have no listener registered yet in that
+			 * request and silently do nothing — WC_Emails::instance() is a
+			 * plain singleton, so calling this on every request is a no-op
+			 * once something else has already constructed it.
+			 */
+			add_action(
+				'init',
+				function () {
+					WC()->mailer();
+				}
+			);
 		}
 
 		add_filter(

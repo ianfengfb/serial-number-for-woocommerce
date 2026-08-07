@@ -62,7 +62,9 @@ uninstall.php                       Runs only on wp-admin "Delete" (never on pla
                                      since WooCommerce may not even be active at uninstall time.
 composer.json                       PSR-4 autoload (SerialNumberForWooCommerce\ -> includes/)
 includes/
-  Plugin.php                        Singleton; wires up free + Pro features on init()
+  Plugin.php                        Singleton; wires up free + Pro features on init(); also forces
+                                     WC_Emails to construct on `init` (see License emails below) so every
+                                     manually-triggered email has a listener registered before it can fire
   Licensing.php                     is_pro_active() gate (see above)
   Install.php                       activate() target (called from the bootstrap's own snw_activate_plugin()
                                      wrapper, only after that wrapper confirms WooCommerce is active): creates/
@@ -690,6 +692,19 @@ echo back `serial_number` for the caller to confirm against. No new
 customer activation: `activate_serial()` fires the same
 `snw_license_activated` action regardless of caller, so
 `LicenseActivatedEmail`/`LicenseActivatedAdminEmail` fire identically.
+
+Every one of these manual paths (this one, customer self-activation above,
+the admin button below, and the Serial Numbers list's resend action) fires
+from a bare AJAX/REST request with no order-status transition of its own —
+unlike a normal checkout or "mark Completed" request, nothing in that
+request otherwise forces WooCommerce to construct `WC_Emails` (which is
+what applies the `woocommerce_email_classes` filter and registers each
+Pro email class's own `add_action( 'snw_..._activated', ... )` listener).
+Without a listener already registered, `do_action( 'snw_license_activated',
+... )` does nothing at all — not a delivery failure, the hook simply has no
+one listening yet. `Plugin::init()` now forces this via `WC()->mailer()`
+on `init`, on every request, specifically so these bare-AJAX/REST paths
+can't ever race against WooCommerce's own lazy initialization.
 
 ### Admin manual activation (Pro)
 
