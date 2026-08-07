@@ -6,7 +6,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Pro: notifies the customer when a license activates. Fired from
  * Pro\LicenseKey\LicenseKey::activate_serial() via the `snw_license_activated`
- * action.
+ * action, or manually re-sent from the Serial Numbers list
+ * (Pro\SerialNumberNotice\Resend) via `snw_resend_license_activated` — same
+ * `trigger()` either way, since it only reads and sends, it never mutates
+ * the serial's own state.
  */
 final class LicenseActivatedEmail extends AbstractLicenseEmail {
 
@@ -19,6 +22,7 @@ final class LicenseActivatedEmail extends AbstractLicenseEmail {
 		$this->configure_common();
 
 		add_action( 'snw_license_activated', array( $this, 'trigger' ), 10, 1 );
+		add_action( 'snw_resend_license_activated', array( $this, 'trigger' ), 10, 1 );
 
 		parent::__construct();
 	}

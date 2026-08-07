@@ -46,6 +46,7 @@ $email_ids = array(
 	'snw_license_expired',
 	'snw_license_renewed',
 	'snw_license_activated_admin',
+	'snw_serial_number_notice',
 );
 
 foreach ( $email_ids as $email_id ) {
