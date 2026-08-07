@@ -373,6 +373,23 @@ stale one that only catches up after saving or refreshing — `.val()` on a
 disabled field works fine since `disabled` only blocks user input and form
 submission, not script changes.
 
+Because `sync()` turns `_manage_stock` on (needed so WooCommerce displays a
+numeric count at all), WooCommerce's own native stock reduction
+(`wc_reduce_stock_levels()`, fired on payment-complete and on several
+order-status transitions — the exact one varies by payment gateway/order
+flow) also treats the product as stock-managed and independently
+decrements `_stock` by the ordered quantity, with no idea this plugin
+already recomputed the correct post-purchase count from the serial pool —
+a double reduction stacked on top of `Assigner::assign_for_order()`'s own
+sync. Rather than trying to intercept WooCommerce's reduction at its exact
+trigger point, `StockSync`'s constructor (instantiated unconditionally
+when licensed) re-runs `sync()` itself — an idempotent, absolute recompute,
+not a relative decrement — on every event that could plausibly be the one
+WooCommerce reduces stock on (`RESYNC_HOOKS`: `woocommerce_payment_complete`,
+and the `processing`/`on-hold`/`completed` order-status transitions), so
+whatever WooCommerce's native logic just did to `_stock` is always
+immediately corrected back to the true pool count afterward.
+
 ## Custom generation rules (Pro)
 
 `Generator::generate( array $overrides = array() )` takes any of `prefix`,
