@@ -398,26 +398,37 @@ immediately corrected back to the true pool count afterward.
 the fields it wants to override.
 
 `Pro\CustomRules\CustomRules::resolve_overrides( $product_id, $extra_overrides = [] )`
-is the single place that decides which rule applies to a product: if that
-product has `_snw_custom_rule_enabled` = `yes` (and is licensed), its own
-`_snw_custom_prefix` / `_snw_custom_suffix` / `_snw_custom_length` /
+is the single place that decides which *saved* rule applies to a product:
+if that product has `_snw_custom_rule_enabled` = `yes` (and is licensed),
+its own `_snw_custom_prefix` / `_snw_custom_suffix` / `_snw_custom_length` /
 `_snw_custom_charset` meta seed the overrides array; `$extra_overrides` is
 then layered on top for anything the caller explicitly supplies, so it wins
-over the product's stored rule for that one call. Both bulk-generate paths
-go through this: `Pro\CustomRules\Ajax` (the product tab's own "Bulk
-generate for this product" button, no extra overrides — just the product's
-rule or global) and `Pro\BulkGenerate\Controller` (each row's own
-prefix/suffix/character set/random part length are passed as
-`$extra_overrides`, so an explicit row value still wins over that row's
-product's custom rule). Rule field values persist
-even while `_snw_custom_rule_enabled` is off, so re-checking it later
-doesn't lose what was typed — `is_enabled_for_product()` alone gates whether
-they take effect, same pattern as `StockSync`.
+over the product's stored rule for that one call — only `'' !== $value &&
+null !== $value` counts as "explicitly supplied", so a caller must pass an
+actual empty string (not a bare `0`) for a field it wants to leave alone;
+`Pro\BulkGenerate\Controller` learned this the hard way (see below).
+`Pro\BulkGenerate\Controller` (each row's own prefix/suffix/character
+set/random part length are passed as `$extra_overrides`, so an explicit
+row value still wins over that row's product's custom rule — a row that
+leaves "Random part length" blank passes `$row['length'] ?: ''`, not the
+bare `0` `absint()` would otherwise produce, since `resolve_overrides()`
+would treat that `0` as an explicit override and skip the product's own
+saved length entirely, falling through to the *global* length instead)
+and `Admin\SerialNumbers\Ajax::generate_serial()` (the Add New form's own
+"Generate" button, once the Product field has a value — no
+`$extra_overrides`, just the product's rule or global) both go through
+this. Rule field values persist even while `_snw_custom_rule_enabled` is
+off, so re-checking it later doesn't lose what was typed —
+`is_enabled_for_product()` alone gates whether they take effect, same
+pattern as `StockSync`.
 
-The product tab's own "Bulk generate this amount of serial numbers" button always reads the
-product's *saved* meta at generate time, not whatever's currently typed
-into the rule fields — the tooltip says as much, so save the product first
-if the rule was just changed.
+The product tab's own "Bulk generate this amount of serial numbers"
+button is the one exception that does *not* go through
+`resolve_overrides()`: `Pro\CustomRules\Ajax::overrides_from_request()`
+reads the rule fields exactly as posted with that one request — including
+anything just checked or typed but not yet saved — rather than the
+product's saved meta, so a rule change applies to it immediately without
+having to save the product first.
 
 ## Warranty (Pro)
 
