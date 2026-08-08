@@ -406,15 +406,23 @@ final class Repository {
 
 	/**
 	 * Marks a serial number Activated (warranty/license starting now), with
-	 * the given expiry — a generic "set these three columns" primitive,
-	 * agnostic of how $expires_at was computed, so it's reusable by whichever
+	 * the given expiry — a generic "set these columns" primitive, agnostic
+	 * of how $expires_at was computed, so it's reusable by whichever
 	 * activation trigger calls it (order-completed, delayed, a future manual
 	 * customer flow, or a lifetime license that never expires).
 	 *
 	 * @param string|null $expires_at MySQL datetime string, or null for a
 	 *                                license/warranty that never expires.
+	 * @param string|null $type       'warranty' or 'license' — which feature
+	 *                                is activating this serial, stamped once
+	 *                                and permanently (see the `type` column's
+	 *                                docblock in Install.php) so later
+	 *                                changes to the product's Warranty/
+	 *                                License setting can never retroactively
+	 *                                change which feature this specific row
+	 *                                belongs to.
 	 */
-	public static function activate( int $id, ?string $expires_at ): void {
+	public static function activate( int $id, ?string $expires_at, ?string $type = null ): void {
 		global $wpdb;
 
 		$wpdb->update(
@@ -423,9 +431,10 @@ final class Repository {
 				'status'       => Status::ACTIVATED,
 				'activated_at' => current_time( 'mysql' ),
 				'expires_at'   => $expires_at,
+				'type'         => $type,
 			),
 			array( 'id' => $id ),
-			array( '%s', '%s', '%s' ),
+			array( '%s', '%s', '%s', '%s' ),
 			array( '%d' )
 		);
 	}

@@ -33,10 +33,14 @@ final class Resend {
 			return array();
 		}
 
-		$product_id = (int) ( $serial->product_id ?? 0 );
-		$actions    = array();
+		$actions = array();
 
-		if ( $product_id && LicenseKey::is_enabled_for_product( $product_id ) ) {
+		// Prefers the row's own stored type over the product's current
+		// setting (see LicenseKey::is_license_serial()/
+		// Warranty::is_warranty_serial()) — once activated, a serial's own
+		// history decides which resend action(s) apply, not whatever the
+		// product happens to be configured as right now.
+		if ( LicenseKey::is_license_serial( $serial ) ) {
 			if ( Status::ACTIVATED === $serial->status ) {
 				$actions['license_activated'] = __( 'Resend License Activated Email', 'serial-number-for-woocommerce' );
 			} elseif ( Status::EXPIRED === $serial->status ) {
@@ -44,7 +48,7 @@ final class Resend {
 			}
 		}
 
-		if ( $product_id && Warranty::is_enabled_for_product( $product_id ) ) {
+		if ( Warranty::is_warranty_serial( $serial ) ) {
 			if ( Status::ACTIVATED === $serial->status ) {
 				$actions['warranty_activated'] = __( 'Resend Warranty Activated Email', 'serial-number-for-woocommerce' );
 			} elseif ( Status::EXPIRED === $serial->status ) {

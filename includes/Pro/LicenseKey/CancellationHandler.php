@@ -45,14 +45,13 @@ final class CancellationHandler {
 				continue;
 			}
 
-			$product_id = $item->get_product_id();
-
-			if ( ! $product_id || ! LicenseKey::is_enabled_for_product( $product_id ) ) {
-				continue;
-			}
-
 			foreach ( Assigner::serial_rows( $item ) as $row ) {
-				if ( Status::ACTIVATED === $row->status ) {
+				// is_license_serial() prefers the row's own stored type
+				// over the product's current setting, so a serial that
+				// actually activated as a Warranty is never revoked here
+				// just because the product's License checkbox happens to
+				// be on now (e.g. after a later reconfiguration).
+				if ( Status::ACTIVATED === $row->status && LicenseKey::is_license_serial( $row ) ) {
 					LicenseKey::revoke_serial( (int) $row->id );
 				}
 			}
