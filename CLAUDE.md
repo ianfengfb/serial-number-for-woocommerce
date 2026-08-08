@@ -597,13 +597,33 @@ everywhere else in the plugin that resolves an order.
 ## License Key (Pro)
 
 `Pro\LicenseKey\LicenseKey` treats a product's serial numbers as license
-keys — its own per-product opt-in (`_snw_license_enabled`), independent of
-Warranty; a product can have either, both, or neither switched on. It
-deliberately reuses Warranty's underlying mechanics rather than
-duplicating them: `Status::ACTIVATED`/`EXPIRED`, `activated_at`/
-`expires_at`, `Repository::activate()`/`expire()`, and the shared expiry
-cron (see above) all work identically for a license as for a warranty — a
-serial's row has no idea which feature is driving it.
+keys — its own per-product opt-in (`_snw_license_enabled`). It deliberately
+reuses Warranty's underlying mechanics rather than duplicating them:
+`Status::ACTIVATED`/`EXPIRED`, `activated_at`/`expires_at`,
+`Repository::activate()`/`expire()`, and the shared expiry cron (see above)
+all work identically for a license as for a warranty — a serial's row has
+no idea which feature is driving it.
+
+**Warranty and License are mutually exclusive on a product — never both.**
+Reusing the same mechanics means reusing the same two columns: both
+`Warranty::activate_serial()` and `LicenseKey::activate_serial()` write
+`activated_at`/`expires_at` via the identical `Repository::activate()`,
+guarded by the identical idempotency check
+(`if ( ! $serial || $serial->activated_at ) return false;`). If both were
+enabled on one product, whichever feature's trigger fired first would
+"win" — the second's `activate_serial()` call would silently no-op against
+an already-set `activated_at`, with no error, no expiry computed for it,
+and no `snw_warranty_activated`/`snw_license_activated` action ever firing
+for the loser. There's no schema support for tracking two separate
+expiration dates on one serial, so this is enforced rather than merely
+discouraged:
+- `ProductTab`'s inline script unchecks (and collapses the fields of)
+  whichever of `WARRANTY_ENABLED_META_KEY`/`LICENSE_ENABLED_META_KEY` isn't
+  the one just checked, the moment the other is checked — both checkboxes'
+  own descriptions say so too.
+- `ProductTab::save()` re-enforces this server-side for a stale/JS-less
+  submission that somehow posts both as checked: License wins, Warranty is
+  forced back to `'no'` before either is persisted.
 
 Two differences from Warranty's settings shape:
 
@@ -945,6 +965,14 @@ plugin-specific to learn. This is the outbound counterpart to Phase 4's
 inbound REST API — that one lets a seller's system tell this plugin
 something happened; this lets this plugin tell a seller's system
 something happened.
+
+The License Key (Pro) settings section's own intro text points sellers at
+WooCommerce > Settings > Advanced > Webhooks for these four topics,
+alongside its existing pointer to WooCommerce > Settings > Emails for the
+customer-facing emails — the only place in the plugin's own UI that
+mentions webhooks exist at all, since the topics themselves are otherwise
+only discoverable by opening WooCommerce's native Webhooks screen and
+scrolling the Topic dropdown.
 
 Three of WooCommerce's own extension points make this possible for a
 resource it has no built-in knowledge of:

@@ -280,7 +280,7 @@ final class ProductTab {
 							array(
 								'id'          => self::WARRANTY_ENABLED_META_KEY,
 								'label'       => __( 'Enable warranty for this product', 'serial-number-for-woocommerce' ),
-								'description' => __( 'Tracks a warranty against each serial number assigned for this product.', 'serial-number-for-woocommerce' ),
+								'description' => __( 'Tracks a warranty against each serial number assigned for this product. Mutually exclusive with License Key below — a serial can only track one expiration date.', 'serial-number-for-woocommerce' ),
 								'desc_tip'    => true,
 								'value'       => get_post_meta( $post->ID, self::WARRANTY_ENABLED_META_KEY, true ),
 							)
@@ -392,7 +392,7 @@ final class ProductTab {
 							array(
 								'id'          => self::LICENSE_ENABLED_META_KEY,
 								'label'       => __( 'This is a license product', 'serial-number-for-woocommerce' ),
-								'description' => __( 'Treats each serial number assigned for this product as a license key, shown to the customer as such instead of a serial number.', 'serial-number-for-woocommerce' ),
+								'description' => __( 'Treats each serial number assigned for this product as a license key, shown to the customer as such instead of a serial number. Mutually exclusive with Warranty above — a serial can only track one expiration date.', 'serial-number-for-woocommerce' ),
 								'desc_tip'    => true,
 								'value'       => get_post_meta( $post->ID, self::LICENSE_ENABLED_META_KEY, true ),
 							)
@@ -589,6 +589,24 @@ final class ProductTab {
 				$( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).on( 'change', snwToggleLicenseLengthField );
 				$( '#<?php echo esc_js( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>' ).on( 'change', snwToggleApiTriggerNotice );
 
+				// Warranty and License are mutually exclusive (see save()'s own
+				// server-side guard for why) — checking one immediately unchecks
+				// and collapses the other, rather than letting both stay checked
+				// until save.
+				$( '#<?php echo esc_js( self::WARRANTY_ENABLED_META_KEY ); ?>' ).on( 'change', function () {
+					if ( $( this ).is( ':checked' ) ) {
+						$( '#<?php echo esc_js( self::LICENSE_ENABLED_META_KEY ); ?>' ).prop( 'checked', false );
+						snwToggleLicenseFields();
+					}
+				} );
+				$( '#<?php echo esc_js( self::LICENSE_ENABLED_META_KEY ); ?>' ).on( 'change', function () {
+					if ( $( this ).is( ':checked' ) ) {
+						$( '#<?php echo esc_js( self::WARRANTY_ENABLED_META_KEY ); ?>' ).prop( 'checked', false );
+						snwToggleWarrantyFields();
+						snwToggleWarrantyExtensionFields();
+					}
+				} );
+
 				snwToggleConditionalFields();
 				snwToggleCustomRuleFields();
 				snwToggleWarrantyFields();
@@ -748,12 +766,28 @@ final class ProductTab {
 		update_post_meta( $product_id, self::CUSTOM_RULE_ENABLED_META_KEY, $custom_rule_enabled );
 
 		$warranty_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::WARRANTY_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
+		$license_enabled  = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::LICENSE_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
+
+		// Warranty and License are mutually exclusive: both ultimately write
+		// the same activated_at/expires_at columns on a serial's row via
+		// Repository::activate(), so enabling both would silently drop
+		// whichever feature's activation trigger fires second (its own
+		// activate_serial() call would just no-op against an already-set
+		// activated_at). The product tab's own JS keeps the two checkboxes
+		// from being checked together in normal use; this is the server-side
+		// guarantee for a stale/JS-less submission that somehow posts both —
+		// License wins, matching the checkbox order on the tab (License is
+		// the more specific commitment: activation trigger, delivery email,
+		// etc., where Warranty's revert-to-off costs nothing extra).
+		if ( 'yes' === $warranty_enabled && 'yes' === $license_enabled ) {
+			$warranty_enabled = 'no';
+		}
+
 		update_post_meta( $product_id, self::WARRANTY_ENABLED_META_KEY, $warranty_enabled );
 
 		$warranty_extension_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::WARRANTY_EXTENSION_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::WARRANTY_EXTENSION_ENABLED_META_KEY, $warranty_extension_enabled );
 
-		$license_enabled = ( 'yes' === $enabled && $is_pro && isset( $_POST[ self::LICENSE_ENABLED_META_KEY ] ) ) ? 'yes' : 'no';
 		update_post_meta( $product_id, self::LICENSE_ENABLED_META_KEY, $license_enabled );
 
 		// The rule field values themselves are kept even while the checkbox is
