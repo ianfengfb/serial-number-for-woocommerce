@@ -692,6 +692,17 @@ request body (a string, not the internal row ID, since an external caller
 has no reason to know it) rather than the numeric ID every other internal
 caller uses.
 
+Since a merchant is easy to leave without pointing their own system at the
+right place, `ProductTab::render_panel()` shows a visible notice
+(`#snw-license-api-notice`, a plain `<p class="description">`, not just a
+`wc_help_tip()` hover tooltip like the Activation trigger field's own one)
+whenever "Activation trigger" is set to "Externally, by your own system
+(API)" — linking straight to WooCommerce > Settings > Serial Numbers,
+where the API key/endpoint live. Toggled by `snwToggleApiTriggerNotice()`,
+the same show/hide-on-change JS pattern as every other conditional field
+on this tab (`snwToggleLicenseLengthField()` etc.) — bound to the select's
+`change` event and called once at initial page load.
+
 Auth is a single store-wide shared secret —
 `LicenseKey::get_or_create_api_key()` — sent as the `X-SNW-Api-Key`
 header, deliberately not WooCommerce's own REST API consumer key/secret
@@ -793,7 +804,19 @@ Warranty's:
   rendered via `woocommerce_wp_textarea_input()` so it gets a `name`
   attribute for free — the earlier warranty length/period fields didn't,
   since they were hand-rolled `<input>`/`<select>` markup, and silently
-  never saved until that was fixed).
+  never saved until that was fixed). Alongside `instructions`,
+  `collect_for_order()` also pairs each product with
+  `LicenseKey::default_activation_note()` — a built-in translatable note
+  telling the customer to open the order and click "Activate" —
+  automatically included whenever that product's own activation trigger
+  is `'manual'`, empty string for every other trigger. This is deliberate
+  default behaviour, not something the seller has to remember to type
+  into the instructions textarea: a `'manual'`-trigger key is the one
+  case where the customer genuinely has something to do, and it's easy to
+  forget to spell that out by hand. It renders alongside (not instead of)
+  the seller's own `instructions`, and — sharing `collect_for_order()` —
+  reaches the `license.delivered` webhook payload the same way
+  `instructions` already does, with no changes needed in `Webhooks.php`.
 - **`LicenseActivatedEmail`** (`snw_license_activated`) / **`LicenseExpiredEmail`**
   (generic `snw_serial_expired`, filtered by `is_relevant()`) /
   **`LicenseRenewedEmail`** (`snw_license_renewed`) — per-serial,
