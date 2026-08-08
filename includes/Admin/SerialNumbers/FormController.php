@@ -172,33 +172,6 @@ final class FormController {
 				<?php wp_nonce_field( $this->nonce_action() ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
-						<th><label for="snw-serial-number"><?php esc_html_e( 'Serial Number', 'serial-number-for-woocommerce' ); ?></label></th>
-						<td>
-							<input
-								type="text"
-								id="snw-serial-number"
-								name="serial_number"
-								class="regular-text"
-								value="<?php echo esc_attr( $this->field( 'serial_number' ) ); ?>"
-								required
-							/>
-							<button type="button" id="snw-generate-serial" class="button"><?php esc_html_e( 'Generate', 'serial-number-for-woocommerce' ); ?></button>
-							<p class="description"><?php esc_html_e( 'Click Generate to fill this field using the rules in WooCommerce > Settings > Serial Numbers.', 'serial-number-for-woocommerce' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th><label for="snw-status"><?php esc_html_e( 'Status', 'serial-number-for-woocommerce' ); ?></label></th>
-						<td>
-							<select id="snw-status" name="status">
-								<?php foreach ( Status::all() as $value => $label ) : ?>
-									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $status_default, $value ); ?>>
-										<?php echo esc_html( $label ); ?>
-									</option>
-								<?php endforeach; ?>
-							</select>
-						</td>
-					</tr>
-					<tr>
 						<th><label for="snw-product"><?php esc_html_e( 'Product', 'serial-number-for-woocommerce' ); ?></label></th>
 						<td>
 							<select
@@ -212,6 +185,33 @@ final class FormController {
 								<?php if ( $product_option ) : ?>
 									<option value="<?php echo esc_attr( $product_option['id'] ); ?>" selected><?php echo esc_html( $product_option['text'] ); ?></option>
 								<?php endif; ?>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="snw-serial-number"><?php esc_html_e( 'Serial Number', 'serial-number-for-woocommerce' ); ?></label></th>
+						<td>
+							<input
+								type="text"
+								id="snw-serial-number"
+								name="serial_number"
+								class="regular-text"
+								value="<?php echo esc_attr( $this->field( 'serial_number' ) ); ?>"
+								required
+							/>
+							<button type="button" id="snw-generate-serial" class="button"><?php esc_html_e( 'Generate', 'serial-number-for-woocommerce' ); ?></button>
+							<p class="description"><?php esc_html_e( 'Click Generate to fill this field using the rules in WooCommerce > Settings > Serial Numbers — or the product\'s own custom rule if one is selected above and enabled for it.', 'serial-number-for-woocommerce' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="snw-status"><?php esc_html_e( 'Status', 'serial-number-for-woocommerce' ); ?></label></th>
+						<td>
+							<select id="snw-status" name="status">
+								<?php foreach ( Status::all() as $value => $label ) : ?>
+									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $status_default, $value ); ?>>
+										<?php echo esc_html( $label ); ?>
+									</option>
+								<?php endforeach; ?>
 							</select>
 						</td>
 					</tr>

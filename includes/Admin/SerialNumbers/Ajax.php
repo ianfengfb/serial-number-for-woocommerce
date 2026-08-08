@@ -2,6 +2,7 @@
 namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
 
 use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\CustomRules\CustomRules;
 use SerialNumberForWooCommerce\Pro\StockSync\StockSync;
 
 defined( 'ABSPATH' ) || exit;
@@ -18,10 +19,21 @@ final class Ajax {
 		add_action( 'wp_ajax_snw_import_serials', array( $this, 'import_serials' ) );
 	}
 
+	/**
+	 * Backs the Add/Edit form's "Generate" button. When the form's own
+	 * Product field is already filled in, uses that product's own custom
+	 * rule (Pro) instead of the global one — same rule the product tab's
+	 * own "Bulk generate" button would use, just reached from the other
+	 * direction (this form has no product yet to save a rule against, it's
+	 * only ever reading one that already exists).
+	 */
 	public function generate_serial(): void {
 		$this->check_request();
 
-		wp_send_json_success( array( 'serial_number' => Generator::generate() ) );
+		$product_id = isset( $_REQUEST['product_id'] ) ? absint( $_REQUEST['product_id'] ) : 0;
+		$overrides  = ( $product_id && Licensing::is_pro_active() ) ? CustomRules::resolve_overrides( $product_id ) : array();
+
+		wp_send_json_success( array( 'serial_number' => Generator::generate( $overrides ) ) );
 	}
 
 	/**

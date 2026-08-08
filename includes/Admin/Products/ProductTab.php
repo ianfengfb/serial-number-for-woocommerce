@@ -271,7 +271,7 @@ final class ProductTab {
 						/>
 						<button type="button" id="snw-bulk-generate-product" class="button" <?php disabled( ! $is_pro ); ?>><?php esc_html_e( 'Generate', 'serial-number-for-woocommerce' ); ?></button>
 						<span id="snw-bulk-generate-product-result" style="margin-left: 8px;"></span>
-						<?php echo wc_help_tip( __( 'Generates this many serial numbers now, connected to this product, using the rule above (or the global rule if not overridden). Uses the saved rule — save the product first if you just changed it.', 'serial-number-for-woocommerce' ) ); ?>
+						<?php echo wc_help_tip( __( 'Generates this many serial numbers now, connected to this product, using the rule above (or the global rule if not overridden) — including any change to that rule you haven\'t saved yet.', 'serial-number-for-woocommerce' ) ); ?>
 					</p>
 
 					<?php if ( $is_pro ) : ?>
@@ -635,6 +635,15 @@ final class ProductTab {
 						nonce: snwNonce,
 						product_id: snwProductId,
 						amount: amount,
+						// Read straight from the form's own current fields —
+						// including anything just checked/typed but not yet
+						// saved — rather than relying on the product's saved
+						// meta, so a rule change applies immediately.
+						rule_enabled: $( '#<?php echo esc_js( self::CUSTOM_RULE_ENABLED_META_KEY ); ?>' ).is( ':checked' ) ? 'yes' : 'no',
+						prefix: $( '#<?php echo esc_js( self::CUSTOM_PREFIX_META_KEY ); ?>' ).val(),
+						suffix: $( '#<?php echo esc_js( self::CUSTOM_SUFFIX_META_KEY ); ?>' ).val(),
+						charset: $( '#<?php echo esc_js( self::CUSTOM_CHARSET_META_KEY ); ?>' ).val(),
+						length: $( '#<?php echo esc_js( self::CUSTOM_LENGTH_META_KEY ); ?>' ).val(),
 					} )
 						.done( function ( response ) {
 							if ( ! response || ! response.success ) {

@@ -41,12 +41,14 @@
 
 			var $button = $( this );
 			var $input = $( '#snw-serial-number' );
+			var productId = $( '#snw-product' ).val();
 
 			$button.prop( 'disabled', true );
 
 			$.getJSON( SNWAdmin.ajaxUrl, {
 				action: 'snw_generate_serial',
 				nonce: SNWAdmin.nonce,
+				product_id: productId || 0,
 			} )
 				.done( function ( response ) {
 					if ( response && response.success && response.data.serial_number ) {
