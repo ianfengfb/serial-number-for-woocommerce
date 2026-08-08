@@ -62,6 +62,24 @@ final class LicenseKey {
 	}
 
 	/**
+	 * A default note explaining how to activate a 'manual'-trigger
+	 * product's key, shown in the delivery email regardless of whether
+	 * the seller has written their own instructions — unlike
+	 * 'immediate'/'on_completed' (nothing for the customer to do) or
+	 * 'api' (the seller's own system handles it), a 'manual' key
+	 * genuinely needs the customer to know they have to activate it
+	 * themselves, and that's easy to forget to spell out in the
+	 * instructions textarea. Empty string for every other trigger.
+	 */
+	public static function default_activation_note( int $product_id ): string {
+		if ( 'manual' !== self::activation_trigger_for_product( $product_id ) ) {
+			return '';
+		}
+
+		return __( 'To activate this license key, log in to your account, open this order, and click the "Activate" button next to the key.', 'serial-number-for-woocommerce' );
+	}
+
+	/**
 	 * Starts a license now: Activated, with expires_at computed from the
 	 * product's duration_for_product() — or left null for a lifetime
 	 * license. Idempotent — a serial that already has an activated_at is
@@ -162,7 +180,7 @@ final class LicenseKey {
 	 * and Webhooks' license.delivered payload, so the two can never drift
 	 * apart on what counts as "this order's licenses".
 	 *
-	 * @return array<int, array{product_name: string, instructions: string, keys: string[]}>
+	 * @return array<int, array{product_name: string, instructions: string, activation_note: string, keys: string[]}>
 	 */
 	public static function collect_for_order( \WC_Order $order ): array {
 		$licenses = array();
@@ -185,9 +203,10 @@ final class LicenseKey {
 			}
 
 			$licenses[] = array(
-				'product_name' => $item->get_name(),
-				'instructions' => self::instructions_for_product( $product_id ),
-				'keys'         => $keys,
+				'product_name'    => $item->get_name(),
+				'instructions'    => self::instructions_for_product( $product_id ),
+				'activation_note' => self::default_activation_note( $product_id ),
+				'keys'            => $keys,
 			);
 		}
 

@@ -445,6 +445,17 @@ final class ProductTab {
 							</select>
 							<?php echo wc_help_tip( __( 'When a license\'s validity period starts counting down. "Manually" shows an Activate button on the customer\'s My Account order view. "Externally" waits for your own system to call the plugin\'s REST API (see WooCommerce > Settings > Serial Numbers).', 'serial-number-for-woocommerce' ) ); ?>
 						</p>
+						<p class="form-field" id="snw-license-api-notice" style="display: none;">
+							<span class="description">
+								<?php
+								printf(
+									/* translators: %s: link to WooCommerce > Settings > Serial Numbers */
+									esc_html__( 'Activation is handled by your own system. See %s for the API key and endpoint it needs to call.', 'serial-number-for-woocommerce' ),
+									'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=snw_serial_numbers' ) ) . '" target="_blank">' . esc_html__( 'WooCommerce > Settings > Serial Numbers', 'serial-number-for-woocommerce' ) . '</a>'
+								);
+								?>
+							</span>
+						</p>
 						<?php
 						woocommerce_wp_textarea_input(
 							array(
@@ -522,6 +533,12 @@ final class ProductTab {
 					);
 				}
 
+				function snwToggleApiTriggerNotice() {
+					$( '#snw-license-api-notice' ).toggle(
+						'api' === $( '#<?php echo esc_js( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>' ).val()
+					);
+				}
+
 				/*
 				 * StockSync already wrote the new stock quantity to the DB by the
 				 * time the AJAX response comes back, but the #_stock field (part
@@ -566,6 +583,7 @@ final class ProductTab {
 				$( '#<?php echo esc_js( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleWarrantyExtensionFields );
 				$( '#<?php echo esc_js( self::LICENSE_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleLicenseFields );
 				$( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).on( 'change', snwToggleLicenseLengthField );
+				$( '#<?php echo esc_js( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>' ).on( 'change', snwToggleApiTriggerNotice );
 
 				snwToggleConditionalFields();
 				snwToggleCustomRuleFields();
@@ -573,6 +591,7 @@ final class ProductTab {
 				snwToggleWarrantyExtensionFields();
 				snwToggleLicenseFields();
 				snwToggleLicenseLengthField();
+				snwToggleApiTriggerNotice();
 				snwToggleStockQuantityLock();
 
 				$( '#snw-add-bulk-serials' ).on( 'click', function ( e ) {
