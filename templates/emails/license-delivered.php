@@ -3,7 +3,7 @@
  * License Delivery email (HTML). Overridable by copying this file to
  * yourtheme/woocommerce/emails/license-delivered.php.
  *
- * @var array     $licenses Array of ['product_name' => string, 'instructions' => string, 'keys' => string[]].
+ * @var array     $licenses Array of ['product_name' => string, 'instructions' => string, 'activation_note' => string, 'keys' => string[]].
  * @var string    $email_heading
  * @var string    $additional_content
  * @var bool      $sent_to_admin
@@ -21,6 +21,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 		<strong><?php echo esc_html( _n( 'License Key', 'License Keys', count( $license['keys'] ), 'serial-number-for-woocommerce' ) ); ?>:</strong>
 		<?php echo esc_html( implode( ', ', $license['keys'] ) ); ?>
 	</p>
+	<?php if ( $license['activation_note'] ) : ?>
+		<p><em><?php echo esc_html( $license['activation_note'] ); ?></em></p>
+	<?php endif; ?>
 	<?php if ( $license['instructions'] ) : ?>
 		<div>
 			<?php echo wp_kses_post( wpautop( wptexturize( $license['instructions'] ) ) ); ?>
