@@ -428,7 +428,11 @@ button is the one exception that does *not* go through
 reads the rule fields exactly as posted with that one request — including
 anything just checked or typed but not yet saved — rather than the
 product's saved meta, so a rule change applies to it immediately without
-having to save the product first.
+having to save the product first. Its own success message also appends a
+`target="_blank"` link ("Check them in the Serial Numbers list") to the
+list page pre-filtered to this product (`snw_filter_product_id`), since
+the newly generated serials aren't otherwise visible from the product
+screen itself.
 
 ## Warranty (Pro)
 
