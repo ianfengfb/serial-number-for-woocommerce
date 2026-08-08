@@ -57,7 +57,13 @@ final class Controller {
 				array(
 					'prefix'  => $row['prefix'],
 					'suffix'  => $row['suffix'],
-					'length'  => $row['length'],
+					// resolve_overrides() only treats '' (and null) as "not
+					// set" — a bare 0 would otherwise overwrite the
+					// product's own custom length with nothing, since
+					// Generator::generate() then treats that 0 as unset too
+					// and falls all the way back to the *global* length,
+					// skipping the product's rule entirely.
+					'length'  => $row['length'] ?: '',
 					'charset' => $row['charset'],
 				)
 			);

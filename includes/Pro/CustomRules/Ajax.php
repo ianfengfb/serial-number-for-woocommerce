@@ -11,7 +11,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Pro: generates a given amount of serial numbers for one product from the
  * product edit screen, using its own custom rule if enabled (else the
- * global rule). Backs the Serial Number tab's "Bulk generate" button.
+ * global rule). Backs the Serial Number tab's "Bulk generate" button. Reads
+ * the rule fields exactly as posted with this request (see
+ * overrides_from_request()) rather than the product's saved meta, so a
+ * rule that was just checked/typed but not yet saved still applies.
  */
 final class Ajax {
 
@@ -44,7 +47,7 @@ final class Ajax {
 			);
 		}
 
-		$overrides = CustomRules::resolve_overrides( $product_id );
+		$overrides = $this->overrides_from_request();
 		$status    = Status::configured_default();
 		$created   = 0;
 
@@ -73,6 +76,30 @@ final class Ajax {
 				'created'        => $created,
 				'stock_quantity' => $stock_quantity,
 			)
+		);
+	}
+
+	/**
+	 * Builds the effective Generator overrides from the product tab's own
+	 * rule fields exactly as posted with this request — i.e. whatever's
+	 * currently in the form, including anything just checked/typed but not
+	 * yet saved — rather than CustomRules::resolve_overrides()'s saved-meta
+	 * lookup. This is what lets the "Bulk generate" button apply a rule
+	 * change immediately without saving the product first. When the
+	 * checkbox itself isn't posted as checked, no product-specific
+	 * override applies at all, matching is_enabled_for_product()'s own
+	 * "off means off" behavior for the saved case.
+	 */
+	private function overrides_from_request(): array {
+		if ( ! isset( $_POST['rule_enabled'] ) || 'yes' !== $_POST['rule_enabled'] ) {
+			return array();
+		}
+
+		return array(
+			'prefix'  => isset( $_POST['prefix'] ) ? sanitize_text_field( wp_unslash( $_POST['prefix'] ) ) : '',
+			'suffix'  => isset( $_POST['suffix'] ) ? sanitize_text_field( wp_unslash( $_POST['suffix'] ) ) : '',
+			'charset' => isset( $_POST['charset'] ) ? sanitize_key( wp_unslash( $_POST['charset'] ) ) : '',
+			'length'  => isset( $_POST['length'] ) ? absint( $_POST['length'] ) : 0,
 		);
 	}
 }
