@@ -5,6 +5,7 @@
  *
  * @var string $serial_number
  * @var string $expires_at
+ * @var bool   $is_lifetime
  * @var string $email_heading
  * @var string $additional_content
  */
@@ -29,6 +30,8 @@ if ( $expires_at ) {
 			$expires_at
 		)
 	) . "\n\n";
+} elseif ( $is_lifetime ) {
+	echo wp_strip_all_tags( __( 'This is a lifetime license — it never expires.', 'serial-number-for-woocommerce' ) ) . "\n\n";
 }
 
 if ( $additional_content ) {

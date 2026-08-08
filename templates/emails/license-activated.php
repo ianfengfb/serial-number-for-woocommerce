@@ -5,6 +5,7 @@
  *
  * @var string    $serial_number
  * @var string    $expires_at
+ * @var bool      $is_lifetime
  * @var string    $email_heading
  * @var string    $additional_content
  * @var bool      $sent_to_admin
@@ -35,6 +36,8 @@ printf(
 );
 ?>
 </p>
+<?php elseif ( $is_lifetime ) : ?>
+<p><?php esc_html_e( 'This is a lifetime license — it never expires.', 'serial-number-for-woocommerce' ); ?></p>
 <?php endif; ?>
 <?php
 if ( $additional_content ) {

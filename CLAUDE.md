@@ -641,6 +641,25 @@ Two differences from Warranty's settings shape:
   whole `p.form-field` wrapper — that wrapper also holds the period
   `<select>`, so hiding the wrapper along with the input would hide the
   only control that could switch the period back off "Lifetime" again.
+
+  A lifetime license's `expires_at IS NULL` is indistinguishable on its
+  own from every other reason a serial's expiry column is empty (not yet
+  activated, a plain serial, a warranty) — every place that displays
+  expiry disambiguates by also checking `activated_at` is set *and* the
+  product's own license period is `'lifetime'` before showing an explicit
+  "Lifetime" label instead of silently showing nothing:
+  `Admin\SerialNumbers\ListTable` (the "Expires On" column shows
+  "Lifetime" instead of "—"), `Orders\CustomerItemDisplay::format_serial()`
+  (an activated lifetime key shows "SERIAL (Lifetime — never expires)" on
+  the order-details page), `templates/print/order-slip.php`, and
+  `Pro\LicenseKey\Emails\AbstractLicenseEmail` (a new `$is_lifetime` flag
+  alongside the existing `{expires_at}` placeholder, rendered by
+  `templates/emails/license-activated.php` as "This is a lifetime
+  license — it never expires." whenever `$expires_at` is empty but
+  `$is_lifetime` is true). A *not-yet-activated* lifetime license still
+  shows nothing extra in all of these — the label only appears once
+  `activated_at` is actually set, matching how an expiry date itself only
+  ever appears post-activation.
 - **Per-product activation trigger**: `LICENSE_ACTIVATION_TRIGGER_META_KEY`
   (`'immediate'`, `'on_completed'`, `'manual'`, or `'api'`) is set
   per-product on the Serial Number tab, not as a single store-wide setting
