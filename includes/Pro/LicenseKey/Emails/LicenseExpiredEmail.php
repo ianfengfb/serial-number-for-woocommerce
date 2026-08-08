@@ -39,6 +39,6 @@ final class LicenseExpiredEmail extends AbstractLicenseEmail {
 	}
 
 	protected function is_relevant( object $serial ): bool {
-		return LicenseKey::is_enabled_for_product( (int) $serial->product_id );
+		return LicenseKey::is_license_serial( $serial );
 	}
 }

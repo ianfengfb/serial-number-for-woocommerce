@@ -51,6 +51,7 @@ final class Install {
 			created_at datetime NOT NULL,
 			expires_at datetime DEFAULT NULL,
 			activated_at datetime DEFAULT NULL,
+			type varchar(20) DEFAULT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY serial_number (serial_number),
 			KEY product_id (product_id),

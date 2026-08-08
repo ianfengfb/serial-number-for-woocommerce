@@ -21,6 +21,29 @@ final class Warranty {
 	}
 
 	/**
+	 * Whether a specific serial row is a warranty — prefers the row's own
+	 * stored `type` column (stamped once by activate_serial(), the
+	 * historical record of what actually happened) over the product's
+	 * *current* Warranty setting, which can be reconfigured (or swapped for
+	 * License) after this serial already activated. Falls back to the live
+	 * product check only for a row that hasn't activated yet, or one
+	 * activated before the `type` column existed (still null either way).
+	 *
+	 * @param object $serial A snw_serial_numbers row.
+	 */
+	public static function is_warranty_serial( object $serial ): bool {
+		if ( ! Licensing::is_pro_active() ) {
+			return false;
+		}
+
+		if ( isset( $serial->type ) && null !== $serial->type ) {
+			return 'warranty' === $serial->type;
+		}
+
+		return ! empty( $serial->product_id ) && self::is_enabled_for_product( (int) $serial->product_id );
+	}
+
+	/**
 	 * A product's configured warranty length, regardless of whether warranty
 	 * is actually enabled for it — callers that need to act on the duration
 	 * should check is_enabled_for_product() themselves first, same pattern as
@@ -75,7 +98,7 @@ final class Warranty {
 
 		$expires_ts = strtotime( "+{$months} months", current_time( 'timestamp' ) );
 
-		Repository::activate( $serial_id, gmdate( 'Y-m-d H:i:s', $expires_ts ) );
+		Repository::activate( $serial_id, gmdate( 'Y-m-d H:i:s', $expires_ts ), 'warranty' );
 
 		/**
 		 * Fires after a serial number's warranty activates. Backs the

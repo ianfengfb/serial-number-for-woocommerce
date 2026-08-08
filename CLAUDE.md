@@ -205,8 +205,10 @@ assets/pro/js/admin-license-activation.js Pro: AJAX handler for the admin order 
 - `{$wpdb->prefix}snw_serial_numbers` (created in `Install::activate()`): `id`,
   `serial_number` (unique), `status`, `product_id` (nullable), `order_id`
   (nullable), `created_at`, `expires_at` (nullable), `activated_at`
-  (nullable — Pro Warranty only; when a serial's warranty started, set by
-  `Repository::activate()`). Product/order columns store IDs only — always
+  (nullable — Pro Warranty/License only; when a serial's warranty/license
+  started, set by `Repository::activate()`), `type` (nullable — Pro
+  Warranty/License only; see "Warranty vs. License classification" under
+  License Key below). Product/order columns store IDs only — always
   resolve via `wc_get_product()` / `wc_get_order()` rather than joining WC's
   tables directly, so this keeps working under HPOS.
 - Status values live in `SerialNumbers\Status` — the single place to
@@ -624,6 +626,42 @@ discouraged:
 - `ProductTab::save()` re-enforces this server-side for a stale/JS-less
   submission that somehow posts both as checked: License wins, Warranty is
   forced back to `'no'` before either is persisted.
+
+**Warranty vs. License classification survives a later product
+reconfiguration**, via the `type` column (nullable `'warranty'`/`'license'`,
+added alongside `activated_at`/`expires_at` — a schema change, so it needs
+the usual reactivate step). Nothing about the mutual-exclusivity guarantee
+above stops a seller from *changing* a product's Warranty/License checkbox
+after some of its serials have already activated under the other one — the
+checkboxes are just current configuration, not a record of what already
+happened. Before this column existed, every consumer re-derived "is this
+serial a license/warranty" from the *live* product meta each time, so
+reconfiguring a product could retroactively reclassify an already-activated
+serial: the wrong resend action offered, the wrong revoke-on-refund policy
+applied, the wrong side of the shared `snw_serial_expired` cron event
+firing an email, the wrong `license.expired` webhook relay decision.
+`Warranty::activate_serial()`/`LicenseKey::activate_serial()` now stamp
+`type` once, permanently, the moment a serial actually activates (via
+`Repository::activate()`'s new `$type` parameter) — the historical record
+of what happened, independent of whatever the product is configured as
+today. `Warranty::is_warranty_serial( $serial )` / `LicenseKey::is_license_serial( $serial )`
+are the single place every consumer now asks instead of calling
+`is_enabled_for_product()` directly on a specific *row*: they prefer the
+row's own stored `type` when set, falling back to the live product check
+only for a row that hasn't activated yet (nothing to stamp) or one
+activated before this column existed (still `NULL` either way, so it keeps
+today's find-by-current-config behavior rather than breaking). Consumers
+updated to go through these two methods: `WarrantyExpiredEmail`/
+`LicenseExpiredEmail::is_relevant()`, `Webhooks::relay_expired()`,
+`Resend::actions_for_serial()`, both `CancellationHandler`s'
+revoke-on-refund decision, `ListTable`'s "Lifetime" label, and
+`CustomerItemDisplay`/`Pro\PrintSlip\Printer`'s "License Key(s)" vs.
+"Serial Number(s)" labeling (checked across every serial on the line item,
+since serials on one item always share a product and therefore should
+agree). This doesn't extend to *which settings* were in effect at
+activation (e.g. a license's own length/period aren't snapshotted) — only
+which feature — so a product's duration fields still read live; that
+remains a known, narrower scope limit.
 
 Two differences from Warranty's settings shape:
 

@@ -1,7 +1,6 @@
 <?php
 namespace SerialNumberForWooCommerce\Orders;
 
-use SerialNumberForWooCommerce\Licensing;
 use SerialNumberForWooCommerce\Pro\LicenseKey\LicenseKey;
 
 defined( 'ABSPATH' ) || exit;
@@ -90,7 +89,21 @@ final class CustomerItemDisplay {
 		}
 
 		$product_id = $item->get_product_id();
-		$is_license = $product_id && Licensing::is_pro_active() && LicenseKey::is_enabled_for_product( $product_id );
+
+		// is_license_serial() prefers each row's own stored type over the
+		// product's current setting, so a later change to the product's
+		// License/Warranty checkboxes can't relabel an already-activated
+		// key. Any one serial answering "yes" is enough — serials on the
+		// same line item always share one product, so they agree in
+		// practice (mutual exclusivity keeps a product from being both).
+		$is_license = false;
+
+		foreach ( $serials as $row ) {
+			if ( LicenseKey::is_license_serial( $row ) ) {
+				$is_license = true;
+				break;
+			}
+		}
 
 		$label       = $is_license
 			? _n( 'License Key', 'License Keys', count( $serials ), 'serial-number-for-woocommerce' )

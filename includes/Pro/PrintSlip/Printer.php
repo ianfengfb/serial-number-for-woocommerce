@@ -91,8 +91,20 @@ final class Printer {
 			}
 
 			$product_id = $item->get_product_id();
-			$is_license = $product_id && LicenseKey::is_enabled_for_product( $product_id );
-			$is_warranty = $product_id && Warranty::is_enabled_for_product( $product_id );
+
+			// is_license_serial()/is_warranty_serial() prefer each row's
+			// own stored type over the product's current setting, so a
+			// later change to the product's checkboxes can't relabel an
+			// already-activated key/warranty on an old order's slip. Any
+			// one serial answering "yes" is enough — see the identical
+			// reasoning in Orders\CustomerItemDisplay::render().
+			$is_license  = false;
+			$is_warranty = false;
+
+			foreach ( $serials as $row ) {
+				$is_license  = $is_license || LicenseKey::is_license_serial( $row );
+				$is_warranty = $is_warranty || Warranty::is_warranty_serial( $row );
+			}
 
 			$items[] = array(
 				'product_name' => $item->get_name(),

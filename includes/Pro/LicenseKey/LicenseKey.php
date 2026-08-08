@@ -25,6 +25,29 @@ final class LicenseKey {
 	}
 
 	/**
+	 * Whether a specific serial row is a license — prefers the row's own
+	 * stored `type` column (stamped once by activate_serial(), the
+	 * historical record of what actually happened) over the product's
+	 * *current* License setting, which can be reconfigured (or swapped for
+	 * Warranty) after this serial already activated. Falls back to the live
+	 * product check only for a row that hasn't activated yet, or one
+	 * activated before the `type` column existed (still null either way).
+	 *
+	 * @param object $serial A snw_serial_numbers row.
+	 */
+	public static function is_license_serial( object $serial ): bool {
+		if ( ! Licensing::is_pro_active() ) {
+			return false;
+		}
+
+		if ( isset( $serial->type ) && null !== $serial->type ) {
+			return 'license' === $serial->type;
+		}
+
+		return ! empty( $serial->product_id ) && self::is_enabled_for_product( (int) $serial->product_id );
+	}
+
+	/**
 	 * A product's configured license length, regardless of whether
 	 * licensing is actually enabled for it — callers that need to act on
 	 * the duration should check is_enabled_for_product() themselves first,
@@ -109,7 +132,7 @@ final class LicenseKey {
 			$expires_at = gmdate( 'Y-m-d H:i:s', $expires_ts );
 		}
 
-		Repository::activate( $serial_id, $expires_at );
+		Repository::activate( $serial_id, $expires_at, 'license' );
 
 		/**
 		 * Fires after a license activates. Backs any future License
