@@ -2,7 +2,7 @@
 /**
  * Plugin Name:          Serial Number for WooCommerce
  * Description:          Assign and manage serial numbers for WooCommerce products and orders.
- * Version:              1.8.0
+ * Version:              1.8.1
  * Requires at least:    6.3
  * Requires PHP:         7.4
  * WC requires at least: 8.0
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SNW_VERSION', '1.8.0' );
+define( 'SNW_VERSION', '1.8.1' );
 define( 'SNW_PLUGIN_FILE', __FILE__ );
 define( 'SNW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SNW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
