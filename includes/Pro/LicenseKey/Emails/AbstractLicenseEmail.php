@@ -2,6 +2,7 @@
 namespace SerialNumberForWooCommerce\Pro\LicenseKey\Emails;
 
 use SerialNumberForWooCommerce\Admin\SerialNumbers\Repository;
+use SerialNumberForWooCommerce\Pro\LicenseKey\LicenseKey;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -15,6 +16,15 @@ defined( 'ABSPATH' ) || exit;
  * amount of plumbing rather than coupling the two namespaces together.
  */
 abstract class AbstractLicenseEmail extends \WC_Email {
+
+	/**
+	 * Whether the serial this email is about is a lifetime license (its
+	 * product's period is 'lifetime', so expires_at is deliberately null
+	 * rather than "not yet computed") — lets the template say so explicitly
+	 * instead of silently omitting the expiry line, indistinguishable from
+	 * a plain "no expiry shown here" case.
+	 */
+	protected bool $is_lifetime = false;
 
 	protected function configure_common(): void {
 		$this->customer_email = true;
@@ -42,6 +52,8 @@ abstract class AbstractLicenseEmail extends \WC_Email {
 			$this->placeholders['{expires_at}']    = $serial->expires_at
 				? date_i18n( get_option( 'date_format' ), strtotime( $serial->expires_at ) )
 				: '';
+			$this->is_lifetime                     = ! $serial->expires_at
+				&& 'lifetime' === LicenseKey::duration_for_product( (int) $serial->product_id )['period'];
 		}
 
 		if ( $this->is_enabled() && $this->get_recipient() ) {
@@ -64,6 +76,7 @@ abstract class AbstractLicenseEmail extends \WC_Email {
 			'order'              => $this->object,
 			'serial_number'      => $this->placeholders['{serial_number}'] ?? '',
 			'expires_at'         => $this->placeholders['{expires_at}'] ?? '',
+			'is_lifetime'        => $this->is_lifetime,
 			'email_heading'      => $this->get_heading(),
 			'additional_content' => $this->get_additional_content(),
 			'sent_to_admin'      => false,
