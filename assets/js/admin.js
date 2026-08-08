@@ -33,8 +33,21 @@
 	// initialize select2 on rows added to the page after the initial load.
 	window.snwInitSearchSelects = initSearchSelects;
 
+	function toggleLifetimeExpiry() {
+		var checked = $( '#snw-lifetime' ).is( ':checked' );
+
+		$( '#snw-expires-at' ).prop( 'disabled', checked );
+
+		if ( checked ) {
+			$( '#snw-expires-at' ).val( '' );
+		}
+	}
+
 	$( function () {
 		initSearchSelects( $( '.snw-search-select' ) );
+
+		$( '#snw-lifetime' ).on( 'change', toggleLifetimeExpiry );
+		toggleLifetimeExpiry();
 
 		$( '#snw-generate-serial' ).on( 'click', function ( e ) {
 			e.preventDefault();

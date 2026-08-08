@@ -698,6 +698,22 @@ Two differences from Warranty's settings shape:
   shows nothing extra in all of these — the label only appears once
   `activated_at` is actually set, matching how an expiry date itself only
   ever appears post-activation.
+
+  The Serial Numbers list's own Add New/Edit form
+  (`Admin\SerialNumbers\FormController`) has its own, independent way to
+  set a row's `expires_at` to "lifetime" directly — a "Never expires
+  (Lifetime)" checkbox (`#snw-lifetime`) next to the Expires On date
+  field, for a manually-added/imported serial that should never expire
+  regardless of what its product's own License period is configured to.
+  Checking it disables and clears the date input client-side
+  (`toggleLifetimeExpiry()` in `assets/js/admin.js`); `save()` treats the
+  checkbox as authoritative server-side too, ignoring whatever the date
+  field posted if `lifetime` came through checked — same "don't trust
+  client-side hiding alone" defensive pattern as everywhere else in this
+  plugin. This doesn't write anything to the new `type` column above —
+  it only ever sets `expires_at` to `NULL`, exactly like leaving the date
+  field blank already did; the checkbox is purely a clearer, more
+  discoverable way to do that, not a new stored concept.
 - **Per-product activation trigger**: `LICENSE_ACTIVATION_TRIGGER_META_KEY`
   (`'immediate'`, `'on_completed'`, `'manual'`, or `'api'`) is set
   per-product on the Serial Number tab, not as a single store-wide setting
@@ -963,7 +979,16 @@ click bumping quantity to 2 by checking the cart for that serial ID first.
 
 `Renewal::renewal_price_for_product()` reads the product's
 `LICENSE_RENEWAL_PRICE_META_KEY`, falling back to the product's own
-regular price when it's blank. `adjust_price()` (on
+regular price when it's blank. `ProductTab::render_panel()` hides this
+field entirely while "License period" is set to "Lifetime"
+(`#snw-license-renewal-price-wrapper`, toggled by
+`snwToggleRenewalPriceField()` — the same show/hide-on-change pattern as
+every other conditional field on this tab), since `Renewal::is_renewable()`
+already excludes lifetime licenses from the renewal flow altogether — a
+renewal price for one would never be charged. The field's own value is
+still saved even while hidden, same "don't lose what was typed" treatment
+as every other conditional field here, in case the period is later
+switched back off "Lifetime". `adjust_price()` (on
 `woocommerce_before_calculate_totals`) sets the cart item's price outright
 to that value on every firing, the same "always compute from a fresh
 lookup, never add onto the current possibly-already-adjusted price" shape
