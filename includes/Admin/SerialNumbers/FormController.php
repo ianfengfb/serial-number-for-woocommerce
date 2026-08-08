@@ -54,7 +54,14 @@ final class FormController {
 		$status        = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '';
 		$product_id    = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
 		$order_id      = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
-		$expires_at    = isset( $_POST['expires_at'] ) ? sanitize_text_field( wp_unslash( $_POST['expires_at'] ) ) : '';
+		$is_lifetime   = ! empty( $_POST['lifetime'] );
+
+		// The "Never expires (Lifetime)" checkbox wins over whatever the
+		// date field holds — its own JS disables/clears that field when
+		// checked (a disabled field doesn't submit), but this is the
+		// server-side guarantee for a stale/JS-less submission that somehow
+		// posts both.
+		$expires_at = ( ! $is_lifetime && isset( $_POST['expires_at'] ) ) ? sanitize_text_field( wp_unslash( $_POST['expires_at'] ) ) : '';
 
 		if ( '' === $serial_number ) {
 			$this->errors[] = __( 'Serial number is required.', 'serial-number-for-woocommerce' );
@@ -151,6 +158,7 @@ final class FormController {
 		if ( '' !== $expires_at && ! isset( $_POST['expires_at'] ) ) {
 			$expires_at = substr( $expires_at, 0, 10 );
 		}
+		$is_lifetime = ! empty( $_POST['lifetime'] );
 		$product_option = $this->selected_option( 'product_id' );
 		$order_option   = $this->selected_option( 'order_id' );
 		$title          = $this->is_edit() ? __( 'Edit Serial Number', 'serial-number-for-woocommerce' ) : __( 'Add New Serial Number', 'serial-number-for-woocommerce' );
@@ -240,7 +248,13 @@ final class FormController {
 								id="snw-expires-at"
 								name="expires_at"
 								value="<?php echo esc_attr( $expires_at ); ?>"
+								<?php disabled( $is_lifetime ); ?>
 							/>
+							<label style="margin-left: 8px;">
+								<input type="checkbox" id="snw-lifetime" name="lifetime" value="1" <?php checked( $is_lifetime ); ?> />
+								<?php esc_html_e( 'Never expires (Lifetime)', 'serial-number-for-woocommerce' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'For a lifetime license, or any serial number that should never expire.', 'serial-number-for-woocommerce' ); ?></p>
 						</td>
 					</tr>
 				</table>
