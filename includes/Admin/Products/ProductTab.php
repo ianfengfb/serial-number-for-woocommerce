@@ -528,7 +528,11 @@ final class ProductTab {
 				}
 
 				function snwToggleLicenseLengthField() {
-					$( '#<?php echo esc_js( self::LICENSE_LENGTH_META_KEY ); ?>' ).closest( 'p.form-field' ).toggle(
+					// Only the number input, not its whole p.form-field — that
+					// wrapper also contains the period <select> itself, and
+					// hiding it along with the input would leave no visible
+					// control to switch back off "Lifetime" again.
+					$( '#<?php echo esc_js( self::LICENSE_LENGTH_META_KEY ); ?>' ).toggle(
 						'lifetime' !== $( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).val()
 					);
 				}
