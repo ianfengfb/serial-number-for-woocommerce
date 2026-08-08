@@ -65,14 +65,17 @@ final class CancellationHandler {
 				wp_clear_scheduled_hook( ActivationTrigger::DELAYED_ACTIVATION_HOOK, array( $serial_id ) );
 			}
 
-			$product_id = $item->get_product_id();
-
-			if ( ! $revoke || ! $product_id || ! Warranty::is_enabled_for_product( $product_id ) ) {
+			if ( ! $revoke ) {
 				continue;
 			}
 
 			foreach ( Assigner::serial_rows( $item ) as $row ) {
-				if ( Status::ACTIVATED === $row->status ) {
+				// is_warranty_serial() prefers the row's own stored type
+				// over the product's current setting, so a serial that
+				// actually activated as a License is never revoked here
+				// just because the product's Warranty checkbox happens to
+				// be on now (e.g. after a later reconfiguration).
+				if ( Status::ACTIVATED === $row->status && Warranty::is_warranty_serial( $row ) ) {
 					Warranty::revoke_serial( (int) $row->id );
 				}
 			}

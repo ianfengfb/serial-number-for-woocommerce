@@ -174,10 +174,12 @@ final class ListTable extends \WP_List_Table {
 				// Distinguishes an activated lifetime license (deliberately
 				// null expires_at) from every other reason this column is
 				// empty (not yet activated, plain serial, warranty, etc.),
-				// which would otherwise look identical.
+				// which would otherwise look identical. is_license_serial()
+				// prefers this row's own stored type, so a later change to
+				// the product's License setting can't flip this label.
 				if (
-					Licensing::is_pro_active() && $item->product_id && ! empty( $item->activated_at )
-					&& LicenseKey::is_enabled_for_product( (int) $item->product_id )
+					$item->product_id && ! empty( $item->activated_at )
+					&& LicenseKey::is_license_serial( $item )
 					&& 'lifetime' === LicenseKey::duration_for_product( (int) $item->product_id )['period']
 				) {
 					return esc_html__( 'Lifetime', 'serial-number-for-woocommerce' );

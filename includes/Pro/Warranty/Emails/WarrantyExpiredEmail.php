@@ -39,6 +39,6 @@ final class WarrantyExpiredEmail extends AbstractWarrantyEmail {
 	}
 
 	protected function is_relevant( object $serial ): bool {
-		return Warranty::is_enabled_for_product( (int) $serial->product_id );
+		return Warranty::is_warranty_serial( $serial );
 	}
 }

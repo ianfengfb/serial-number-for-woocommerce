@@ -68,7 +68,7 @@ final class Webhooks {
 	public function relay_expired( int $serial_id ): void {
 		$serial = Repository::find( $serial_id );
 
-		if ( $serial && LicenseKey::is_enabled_for_product( (int) $serial->product_id ) ) {
+		if ( $serial && LicenseKey::is_license_serial( $serial ) ) {
 			do_action( self::RELAYED_EXPIRED_HOOK, $serial_id );
 		}
 	}
