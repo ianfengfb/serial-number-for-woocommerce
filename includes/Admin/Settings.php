@@ -228,9 +228,10 @@ final class Settings extends \WC_Settings_Page {
 				'title' => __( 'License Key (Pro)', 'serial-number-for-woocommerce' ),
 				'type'  => 'title',
 				'desc'  => sprintf(
-					/* translators: %s: link to WooCommerce > Settings > Emails */
-					__( 'License length, activation trigger, and instructions are configured per product on its Serial Number tab. The "License Delivery", "License Activated", and "License Expired" customer emails — plus the admin notice for license activations — can be turned on/off and customised in %s.', 'serial-number-for-woocommerce' ),
-					'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=email' ) ) . '">' . esc_html__( 'WooCommerce > Settings > Emails', 'serial-number-for-woocommerce' ) . '</a>'
+					/* translators: 1: link to WooCommerce > Settings > Emails, 2: link to WooCommerce > Settings > Advanced > Webhooks */
+					__( 'License length, activation trigger, and instructions are configured per product on its Serial Number tab. The "License Delivery", "License Activated", and "License Expired" customer emails — plus the admin notice for license activations — can be turned on/off and customised in %1$s. If your own system needs to react to these events instead, "License delivered/activated/expired/renewed" are also available as webhook topics under %2$s.', 'serial-number-for-woocommerce' ),
+					'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=email' ) ) . '">' . esc_html__( 'WooCommerce > Settings > Emails', 'serial-number-for-woocommerce' ) . '</a>',
+					'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=advanced&section=webhooks' ) ) . '">' . esc_html__( 'WooCommerce > Settings > Advanced > Webhooks', 'serial-number-for-woocommerce' ) . '</a>'
 				),
 				'id'    => 'snw_license_settings',
 			),
