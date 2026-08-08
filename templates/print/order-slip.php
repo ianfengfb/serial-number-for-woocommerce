@@ -94,6 +94,8 @@ printf(
 							esc_html__( ' (expires %s)', 'serial-number-for-woocommerce' ),
 							esc_html( date_i18n( get_option( 'date_format' ), strtotime( $serial->expires_at ) ) )
 						);
+					} elseif ( $item['is_license'] && ! empty( $serial->activated_at ) && 'lifetime' === $item['license']['duration']['period'] ) {
+						echo ' ' . esc_html__( '(Lifetime — never expires)', 'serial-number-for-woocommerce' );
 					}
 					?>
 				</li>

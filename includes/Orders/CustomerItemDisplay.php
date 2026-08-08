@@ -96,11 +96,12 @@ final class CustomerItemDisplay {
 			? _n( 'License Key', 'License Keys', count( $serials ), 'serial-number-for-woocommerce' )
 			: _n( 'Serial Number', 'Serial Numbers', count( $serials ), 'serial-number-for-woocommerce' );
 		$show_expiry = ! $this->in_email;
+		$is_lifetime = $is_license && 'lifetime' === LicenseKey::duration_for_product( $product_id )['period'];
 
 		$parts = array();
 
 		foreach ( $serials as $serial ) {
-			$parts[] = $this->format_serial( $serial, $show_expiry, $plain_text );
+			$parts[] = $this->format_serial( $serial, $show_expiry, $plain_text, $is_lifetime );
 		}
 
 		if ( $plain_text ) {
@@ -117,11 +118,29 @@ final class CustomerItemDisplay {
 	}
 
 	/**
-	 * @param object $serial A snw_serial_numbers row.
+	 * @param object $serial      A snw_serial_numbers row.
+	 * @param bool   $is_lifetime Whether this row's product is a lifetime
+	 *                             license — distinguishes "never expires"
+	 *                             from "not activated yet", both of which
+	 *                             leave expires_at null.
 	 */
-	private function format_serial( object $serial, bool $show_expiry, bool $plain_text ): string {
-		if ( ! $show_expiry || ! $serial->expires_at ) {
+	private function format_serial( object $serial, bool $show_expiry, bool $plain_text, bool $is_lifetime = false ): string {
+		if ( ! $show_expiry ) {
 			return $plain_text ? $serial->serial_number : esc_html( $serial->serial_number );
+		}
+
+		if ( ! $serial->expires_at ) {
+			if ( ! $is_lifetime || empty( $serial->activated_at ) ) {
+				return $plain_text ? $serial->serial_number : esc_html( $serial->serial_number );
+			}
+
+			$formatted = sprintf(
+				/* translators: %s: serial number */
+				__( '%s (Lifetime — never expires)', 'serial-number-for-woocommerce' ),
+				$serial->serial_number
+			);
+
+			return $plain_text ? $formatted : esc_html( $formatted );
 		}
 
 		$formatted = sprintf(

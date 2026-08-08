@@ -2,6 +2,7 @@
 namespace SerialNumberForWooCommerce\Admin\SerialNumbers;
 
 use SerialNumberForWooCommerce\Licensing;
+use SerialNumberForWooCommerce\Pro\LicenseKey\LicenseKey;
 use SerialNumberForWooCommerce\Pro\SerialNumberNotice\Resend;
 
 defined( 'ABSPATH' ) || exit;
@@ -166,7 +167,23 @@ final class ListTable extends \WP_List_Table {
 				return $item->created_at ? esc_html( date_i18n( get_option( 'date_format' ), strtotime( $item->created_at ) ) ) : '&mdash;';
 
 			case 'expires_at':
-				return $item->expires_at ? esc_html( date_i18n( get_option( 'date_format' ), strtotime( $item->expires_at ) ) ) : '&mdash;';
+				if ( $item->expires_at ) {
+					return esc_html( date_i18n( get_option( 'date_format' ), strtotime( $item->expires_at ) ) );
+				}
+
+				// Distinguishes an activated lifetime license (deliberately
+				// null expires_at) from every other reason this column is
+				// empty (not yet activated, plain serial, warranty, etc.),
+				// which would otherwise look identical.
+				if (
+					Licensing::is_pro_active() && $item->product_id && ! empty( $item->activated_at )
+					&& LicenseKey::is_enabled_for_product( (int) $item->product_id )
+					&& 'lifetime' === LicenseKey::duration_for_product( (int) $item->product_id )['period']
+				) {
+					return esc_html__( 'Lifetime', 'serial-number-for-woocommerce' );
+				}
+
+				return '&mdash;';
 
 			default:
 				return '';
