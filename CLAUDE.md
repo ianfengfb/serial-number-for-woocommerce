@@ -616,6 +616,11 @@ Two differences from Warranty's settings shape:
   `expires_at IS NULL` means it can never match
   `find_activated_past_expiry()`'s `expires_at <= now()` check, so it's
   correctly never swept by the cron — no special-casing needed there.
+  `ProductTab`'s inline script toggles only the length `<input>` itself
+  when "Lifetime" is selected (`snwToggleLicenseLengthField()`), not its
+  whole `p.form-field` wrapper — that wrapper also holds the period
+  `<select>`, so hiding the wrapper along with the input would hide the
+  only control that could switch the period back off "Lifetime" again.
 - **Per-product activation trigger**: `LICENSE_ACTIVATION_TRIGGER_META_KEY`
   (`'immediate'`, `'on_completed'`, `'manual'`, or `'api'`) is set
   per-product on the Serial Number tab, not as a single store-wide setting
