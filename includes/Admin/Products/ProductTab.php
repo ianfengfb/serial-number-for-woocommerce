@@ -470,7 +470,7 @@ final class ProductTab {
 						);
 						?>
 						<?php $product_for_price = wc_get_product( $post->ID ); ?>
-						<p class="form-field">
+						<p class="form-field" id="snw-license-renewal-price-wrapper">
 							<label for="<?php echo esc_attr( self::LICENSE_RENEWAL_PRICE_META_KEY ); ?>"><?php esc_html_e( 'Renewal price', 'serial-number-for-woocommerce' ); ?></label>
 							<input
 								type="number"
@@ -543,6 +543,14 @@ final class ProductTab {
 					);
 				}
 
+				// A lifetime license is never renewable (Renewal::is_renewable()
+				// excludes it), so a renewal price for it would never apply.
+				function snwToggleRenewalPriceField() {
+					$( '#snw-license-renewal-price-wrapper' ).toggle(
+						'lifetime' !== $( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).val()
+					);
+				}
+
 				/*
 				 * StockSync already wrote the new stock quantity to the DB by the
 				 * time the AJAX response comes back, but the #_stock field (part
@@ -587,6 +595,7 @@ final class ProductTab {
 				$( '#<?php echo esc_js( self::WARRANTY_EXTENSION_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleWarrantyExtensionFields );
 				$( '#<?php echo esc_js( self::LICENSE_ENABLED_META_KEY ); ?>' ).on( 'change', snwToggleLicenseFields );
 				$( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).on( 'change', snwToggleLicenseLengthField );
+				$( '#<?php echo esc_js( self::LICENSE_PERIOD_META_KEY ); ?>' ).on( 'change', snwToggleRenewalPriceField );
 				$( '#<?php echo esc_js( self::LICENSE_ACTIVATION_TRIGGER_META_KEY ); ?>' ).on( 'change', snwToggleApiTriggerNotice );
 
 				// Warranty and License are mutually exclusive (see save()'s own
@@ -613,6 +622,7 @@ final class ProductTab {
 				snwToggleWarrantyExtensionFields();
 				snwToggleLicenseFields();
 				snwToggleLicenseLengthField();
+				snwToggleRenewalPriceField();
 				snwToggleApiTriggerNotice();
 				snwToggleStockQuantityLock();
 
