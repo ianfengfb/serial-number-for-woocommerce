@@ -483,6 +483,7 @@ final class ProductTab {
 				var snwNonce      = <?php echo wp_json_encode( wp_create_nonce( 'snw_admin' ) ); ?>;
 				var snwProductId  = <?php echo (int) $post->ID; ?>;
 				var snwIsPro      = <?php echo wp_json_encode( $is_pro ); ?>;
+				var snwProductListUrl = <?php echo wp_json_encode( add_query_arg( array( 'page' => 'serial-number-for-woocommerce', 'snw_filter_product_id' => $post->ID ), admin_url( 'admin.php' ) ) ); ?>;
 
 				function snwIsEnabled() {
 					return $( '#<?php echo esc_js( self::META_KEY ); ?>' ).is( ':checked' );
@@ -654,7 +655,15 @@ final class ProductTab {
 								return;
 							}
 
-							$result.text( response.data.message );
+							$result.empty()
+								.append( document.createTextNode( response.data.message + ' ' ) )
+								.append(
+									$( '<a>', {
+										href: snwProductListUrl,
+										target: '_blank',
+										text: <?php echo wp_json_encode( __( 'Check them in the Serial Numbers list', 'serial-number-for-woocommerce' ) ); ?>,
+									} )
+								);
 							snwApplyStockQuantity( response.data.stock_quantity );
 						} )
 						.fail( function () {
